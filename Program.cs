@@ -1,3 +1,4 @@
+using PersonalFinance.Data;
 using PersonalFinance.Services;
 using PersonalFinance.UI;
 
@@ -13,12 +14,12 @@ static class Program
     {
         ApplicationConfiguration.Initialize();
 
-        // Configure default application font to Segoe UI
-        Application.SetDefaultFont(Theme.FontBody);
+        // Cấu hình font mặc định chuẩn Segoe UI cho toàn bộ ứng dụng
+        Application.SetDefaultFont(Theme.FontApp);
 
-        // Composition Root: Dependency Injection wiring
-        IDataContext dataContext = new JsonDataContext();
-        IFinanceService financeService = new FinanceService(dataContext);
+        // Khởi tạo tầng cơ sở dữ liệu SQLite và tầng dịch vụ nghiệp vụ
+        using var sqliteDb = new SqliteDatabase();
+        IFinanceService financeService = new FinanceService(sqliteDb);
 
         Application.Run(new MainForm(financeService));
     }

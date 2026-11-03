@@ -1,93 +1,66 @@
-# PersonalFinance - Hệ Thống Quản Lý Tài Chính Cá Nhân (WinForms UML)
+# Quản Lý Tài Chính Cá Nhân (WinForms SQLite UML)
 
-Ứng dụng mẫu quản lý tài chính cá nhân được thiết kế theo phương pháp **hướng đối tượng (OOP) và chuẩn hóa mô hình UML**, chạy trên nền tảng **Windows Forms (.NET 10 / C#)**.
-
----
-
-## 1. Đặc Điểm Thiết Kế & Quy Chuẩn Kỹ Thuật
-
-* **Môi trường lập trình trực quan:** Windows Forms (WinForms) hiện đại, hỗ trợ High-DPI và hiển thị sắc nét.
-* **Quy chuẩn Font:** **100% sử dụng Font Segoe UI** cho toàn bộ giao diện (tiêu đề, thẻ thống kê, bảng dữ liệu, nhãn, nút bấm).
-* **Quy chuẩn Màu sắc:** Thiết kế phẳng tối giản (**Solid Flat Design**), **tuyệt đối không sử dụng hiệu ứng dải màu (Gradient)**.
-* **Quy chuẩn Biểu tượng:** **Không sử dụng emoji**, thay vào đó sử dụng nhãn chữ tiếng Việt chuẩn mực, chuyên nghiệp (`[Thu]`, `[Chi]`, `[Chuyen]`, `+ Ghi thu`, `+ Ghi chi`, `-> Chuyen khoan`).
-* **Lưu trữ dữ liệu:** Tự động lưu trữ và nạp dữ liệu từ file `finance_data.json` chuẩn UTF-8, có sẵn dữ liệu mẫu thực tế ngay trong lần khởi chạy đầu tiên.
+Phần mềm Quản Lý Tài Chính Cá Nhân với giao diện cơ bản, chuẩn mực Windows Forms, không màu mè, không lệch tỷ lệ, hỗ trợ 100% Tiếng Việt có dấu, lưu trữ cơ sở dữ liệu SQLite và hỗ trợ tính năng Sao lưu / Phục hồi (Backup & Restore).
 
 ---
 
-## 2. Kiến Trúc Phân Tầng Hướng UML
+## 1. Điểm Nổi Bật
 
-Hệ thống tuân thủ mô hình phân tầng chuẩn mực:
+* **Giao diện chuẩn mực Windows Forms:** Sử dụng `TabControl` tiêu chuẩn và các `GroupBox` chia khối mạch lạc, không lệch khung hình, tương thích tốt với mọi độ phân giải.
+* **Không màu mè, không gradient, không emoji:** Màu sắc cơ bản, nhã nhặn, chuyên nghiệp theo chuẩn ứng dụng quản trị văn phòng.
+* **100% Tiếng Việt có dấu:** Toàn bộ bảng biểu, tiêu đề, nút bấm, thông báo đều sử dụng tiếng Việt tự nhiên, chuẩn mực.
+* **Font Segoe UI chuẩn hóa:** Toàn bộ thành phần giao diện chỉ sử dụng font `Segoe UI`.
+* **Cơ sở dữ liệu SQLite thực thụ:** Sử dụng tệp tin CSDL `personal_finance.db`, có thể mở và kiểm tra trực tiếp bằng *DB Browser for SQLite*.
+* **Sao lưu & Phục hồi (Backup & Restore):** Sao lưu toàn bộ dữ liệu ra tệp `.db` riêng và khôi phục dữ liệu nhanh chóng chỉ với 1 cú nhấp chuột.
+* **Tối giản mã nguồn & Không phụ thuộc bên ngoài:** Tận dụng SQLite engine native có sẵn trên Windows (`winsqlite3.dll`), biên dịch ngay lập tức mà không cần tải gói NuGet nặng nề.
+
+---
+
+## 2. Cấu Trúc Mã Nguồn
+
 ```
 PersonalFinance/
 ├── Models/                     # Lớp Thực Thể (Domain Layer)
 │   ├── Enums.cs                # TransactionType, AccountType
-│   ├── Account.cs              # Thực thể Tài khoản / Ví tài chính
+│   ├── Account.cs              # Thực thể Ví & Tài khoản ngân hàng
 │   ├── Category.cs             # Thực thể Danh mục Thu/Chi
 │   ├── Transaction.cs          # Thực thể Giao dịch tài chính
-│   └── FinancialSummary.cs     # Đối tượng tổng kết số liệu tài chính
-├── Services/                   # Lớp Lưu Trữ & Nghiệp Vụ (Service / Data Layer)
-│   ├── IRepository.cs          # Generic Repository Pattern Interface & InMemoryRepo
-│   ├── IDataContext.cs         # Data Context Interface
-│   ├── JsonDataContext.cs     # Triển khai lưu trữ JSON tự động (Auto-seed & Persistence)
+│   └── FinancialSummary.cs     # Đối tượng tổng hợp số liệu thống kê
+├── Data/                       # Lớp Cơ Sở Dữ Liệu SQLite
+│   └── SqliteDatabase.cs       # Động cơ SQLite native, CRUD, tính toán số dư, Backup/Restore
+├── Services/                   # Lớp Nghiệp Vụ
 │   ├── IFinanceService.cs      # Interface định nghĩa toàn bộ nghiệp vụ
-│   └── FinanceService.cs       # Quản lý số dư ví, đối soát giao dịch, phát sự kiện DataChanged
-├── UI/                         # Lớp Giao Diện Trực Quan (WinForms UI)
-│   ├── Theme.cs                # Quản lý tập trung font Segoe UI, bảng màu Flat Solid
-│   ├── MainForm.cs             # Khung cửa sổ chính, thanh điều hướng Sidebar & Header
-│   ├── Views/                  # Các màn hình chức năng động (UserControl)
-│   │   ├── DashboardView.cs    # Thẻ thống kê 4 chỉ số, bảng giao dịch gần đây, biểu đồ cơ cấu chi tiêu
-│   │   ├── TransactionsView.cs # Sổ chi tiết giao dịch với bộ lọc đa năng & tìm kiếm
-│   │   ├── AccountsView.cs     # Quản lý danh sách các ví/tài khoản và chuyển tiền
-│   │   ├── CategoriesView.cs   # Quản lý danh mục thu/chi
-│   │   └── ReportsView.cs      # Báo cáo tổng hợp, tỷ lệ tiết kiệm & phân bổ tài sản
-│   └── Dialogs/                # Các hộp thoại nhập liệu trực quan
-│       ├── TransactionDialog.cs# Hộp thoại thêm/sửa giao dịch
-│       ├── AccountDialog.cs    # Hộp thoại tạo mới/sửa tài khoản ví
-│       ├── CategoryDialog.cs   # Hộp thoại tạo mới/sửa danh mục
-│       └── TransferDialog.cs   # Hộp thoại chuyển tiền giữa các ví
-└── Program.cs                  # Điểm khởi chạy ứng dụng & Dependency Injection
+│   └── FinanceService.cs       # Cầu nối giữa UI và CSDL, xử lý logic & sự kiện
+├── UI/                         # Lớp Giao Diện Trực Quan (WinForms)
+│   ├── Theme.cs                # Quản lý tập trung font Segoe UI và định dạng tiền tệ
+│   ├── MainForm.cs             # Cửa sổ chính với TabControl (6 Tab chức năng)
+│   └── Dialogs/                # Hộp thoại nhập liệu chuẩn Windows
+│       ├── TransactionDialog.cs# Thêm / sửa giao dịch
+│       ├── AccountDialog.cs    # Thêm / sửa ví tài khoản
+│       ├── CategoryDialog.cs   # Thêm / sửa danh mục
+│       └── TransferDialog.cs   # Chuyển tiền giữa các ví
+├── Program.cs                  # Điểm khởi chạy ứng dụng
+└── personal_finance.db         # Tệp cơ sở dữ liệu SQLite (tự động tạo)
 ```
 
 ---
 
-## 3. Các Chức Năng Chính
+## 3. Các Chức Năng Chính (6 Tab Chức Năng)
 
-1. **Tổng quan tài chính (Dashboard):**
-   * 4 Thẻ chỉ số trực quan: Tổng tài sản khả dụng, Tổng thu nhập, Tổng chi tiêu, Tiết kiệm thuần.
-   * Thanh thao tác nhanh: Ghi nhanh khoản thu, Ghi nhanh khoản chi, Chuyển tiền nội bộ.
-   * Danh sách 8 giao dịch mới nhất với mã màu theo loại giao dịch.
-   * Biểu đồ tỷ trọng chi tiêu theo danh mục dạng thanh phẳng (Flat percentage bars).
-
-2. **Sổ giao dịch (Transactions):**
-   * Xem toàn bộ lịch sử thu/chi/chuyển khoản.
-   * Bộ lọc kết hợp: Theo khoảng ngày, theo loại giao dịch, theo từng ví/tài khoản và tìm kiếm từ khóa ghi chú.
-   * Thêm mới, chỉnh sửa, xóa giao dịch (hệ thống tự động tính toán lại số dư của các ví tương ứng).
-
-3. **Quản lý ví & tài khoản (Accounts):**
-   * Quản lý đa dạng loại tài khoản: Tiền mặt, Ngân hàng, Thẻ tín dụng, Ví điện tử, Sổ tiết kiệm.
-   * Tính năng chuyển tiền nội bộ giữa các ví (ví dụ: Rút tiền ATM, Nạp tiền ví điện tử).
-
-4. **Danh mục thu/chi (Categories):**
-   * Phân loại chi tiêu (Ăn uống, Nhà ở, Mua sắm, v.v.) và thu nhập (Lương, Thưởng, Lãi đầu tư).
-
-5. **Báo cáo & Thống kê (Reports):**
-   * Chọn kỳ xem báo cáo (Tháng này, Năm nay, Tùy chỉnh ngày).
-   * Đo lường Tỷ lệ tiết kiệm (*Savings Rate = Net Savings / Total Income*).
-   * Bảng phân bổ chi tiêu chi tiết theo danh mục và cơ cấu tài sản trên từng ví.
+1. **Tổng quan:** Xem 4 thông số cốt lõi (Tổng tài sản khả dụng, Tổng thu nhập, Tổng chi tiêu, Tiết kiệm thuần), thao tác nhanh và bảng các giao dịch gần đây.
+2. **Sổ giao dịch:** Quản lý toàn bộ giao dịch, hỗ trợ bộ lọc kết hợp theo ngày, loại thu/chi, ví và tìm kiếm theo ghi chú.
+3. **Tài khoản & Ví:** Quản lý ví tiền mặt, tài khoản ngân hàng, thẻ tín dụng, ví điện tử, sổ tiết kiệm; hỗ trợ chuyển tiền nội bộ giữa các ví.
+4. **Danh mục:** Quản lý danh mục chi tiêu và thu nhập.
+5. **Báo cáo & Thống kê:** Báo cáo tỷ lệ tiết kiệm (%), bảng chi tiêu theo danh mục (%) và bảng phân bổ số dư trên từng ví.
+6. **Sao lưu & Khôi phục:** Xem vị trí và dung lượng CSDL hiện tại, thực hiện sao lưu tệp `.db` và khôi phục khi cần.
 
 ---
 
-## 4. Hướng Dẫn Biên Dịch & Chạy Ứng Dụng
+## 4. Cách Chạy Ứng Dụng
 
-Yêu cầu: Đã cài đặt **.NET 8.0 SDK** hoặc **.NET 10.0 SDK**.
+Yêu cầu máy tính đã cài .NET SDK (hỗ trợ .NET 8 / 10).
 
 ```powershell
-# Di chuyển vào thư mục dự án
-cd c:\Users\Tux\Documents\GitHub\PersonalFinance
-
-# Biên dịch dự án
-dotnet build
-
-# Chạy ứng dụng trực tiếp
+# Chạy ứng dụng trực tiếp từ Terminal
 dotnet run
 ```

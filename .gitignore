@@ -1,6 +1,7 @@
 ## .NET / Visual Studio
 [Bb]in/
 [Oo]bj/
+packages/
 *.user
 *.suo
 *.userosscache
@@ -10,3 +11,6 @@
 
 ## App Local Data
 finance_data.json
+*.db
+*.db-journal
+*.bak

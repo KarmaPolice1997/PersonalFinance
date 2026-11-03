@@ -31,109 +31,86 @@ public class TransactionDialog : Form
 
         if (_editingTransaction != null)
         {
-            Text = "Cap nhat giao dich";
+            Text = "Cập nhật giao dịch";
             PopulateData(_editingTransaction);
         }
         else
         {
-            Text = "Them giao dich moi";
+            Text = "Ghi nhận giao dịch mới";
         }
     }
 
     private void InitializeComponent()
     {
-        Font = Theme.FontBody;
-        BackColor = Theme.BgCard;
-        ForeColor = Theme.TextPrimary;
+        Font = Theme.FontApp;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(460, 480);
+        ClientSize = new Size(450, 360);
 
-        var pnlHeader = new Panel
+        var grp = new GroupBox
         {
+            Text = "Thông tin giao dịch",
             Dock = DockStyle.Top,
-            Height = 60,
-            BackColor = Theme.GridHeaderBg,
-            Padding = new Padding(20, 0, 0, 0)
+            Height = 290,
+            Location = new Point(12, 10),
+            Padding = new Padding(12)
         };
-        var lblTitle = new Label
-        {
-            Text = _editingTransaction != null ? "Chinh sua thong tin giao dich" : "Ghi nhan giao dich moi",
-            Font = Theme.FontSectionTitle,
-            ForeColor = Theme.TextPrimary,
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
-        pnlHeader.Controls.Add(lblTitle);
 
-        // Body table layout
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 7,
-            Padding = new Padding(24, 20, 24, 10),
-            AutoSize = false
+            Padding = new Padding(8)
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
         for (int i = 0; i < 7; i++)
         {
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
         }
 
-        // 1. Loai giao dich
-        var lblType = new Label { Text = "Loai giao dich:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _cboType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.FontBody };
-        _cboType.Items.Add(new ComboBoxItem("Chi tieu", TransactionType.Expense));
-        _cboType.Items.Add(new ComboBoxItem("Thu nhap", TransactionType.Income));
-        _cboType.Items.Add(new ComboBoxItem("Chuyen khoan", TransactionType.Transfer));
+        var lblType = new Label { Text = "Loại giao dịch:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _cboType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+        _cboType.Items.Add(new ComboBoxItem("Chi tiêu", TransactionType.Expense));
+        _cboType.Items.Add(new ComboBoxItem("Thu nhập", TransactionType.Income));
+        _cboType.Items.Add(new ComboBoxItem("Chuyển tiền nội bộ", TransactionType.Transfer));
         _cboType.SelectedIndex = 0;
         _cboType.SelectedIndexChanged += OnTypeChanged;
 
-        // 2. Ngay giao dich
-        var lblDate = new Label { Text = "Ngay giao dich:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
+        var lblDate = new Label { Text = "Ngày giao dịch:", Anchor = AnchorStyles.Left, AutoSize = true };
         _dtpDate = new DateTimePicker
         {
             Format = DateTimePickerFormat.Custom,
             CustomFormat = "dd/MM/yyyy",
-            Dock = DockStyle.Fill,
-            Font = Theme.FontBody
+            Dock = DockStyle.Fill
         };
 
-        // 3. So tien
-        var lblAmount = new Label { Text = "So tien (VND):", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
+        var lblAmount = new Label { Text = "Số tiền (VND):", Anchor = AnchorStyles.Left, AutoSize = true };
         _numAmount = new NumericUpDown
         {
             Dock = DockStyle.Fill,
-            Font = Theme.FontBody,
             Minimum = 1000,
             Maximum = 1000000000000M,
             Increment = 50000,
             ThousandsSeparator = true
         };
 
-        // 4. Danh muc
-        var lblCategory = new Label { Text = "Danh muc:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _cboCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.FontBody };
+        var lblCategory = new Label { Text = "Danh mục:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _cboCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
 
-        // 5. Tai khoan nguon / Vi
-        var lblSourceAccount = new Label { Text = "Tai khoan / Vi:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _cboSourceAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.FontBody };
+        var lblSourceAccount = new Label { Text = "Ví / Tài khoản:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _cboSourceAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
 
-        // 6. Tai khoan dich (cho chuyen khoan)
-        _lblDestAccount = new Label { Text = "Vi nhan tien:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold, Visible = false };
-        _cboDestAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.FontBody, Visible = false };
+        _lblDestAccount = new Label { Text = "Ví nhận tiền:", Anchor = AnchorStyles.Left, AutoSize = true, Visible = false };
+        _cboDestAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Visible = false };
 
-        // 7. Ghi chu
-        var lblNote = new Label { Text = "Ghi chu:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _txtNote = new TextBox { Dock = DockStyle.Fill, Font = Theme.FontBody };
+        var lblNote = new Label { Text = "Ghi chú:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _txtNote = new TextBox { Dock = DockStyle.Fill };
 
-        // Add to layout
         layout.Controls.Add(lblType, 0, 0);
         layout.Controls.Add(_cboType, 1, 0);
         layout.Controls.Add(lblDate, 0, 1);
@@ -149,40 +126,38 @@ public class TransactionDialog : Form
         layout.Controls.Add(lblNote, 0, 6);
         layout.Controls.Add(_txtNote, 1, 6);
 
-        // Buttons Footer
-        var pnlFooter = new Panel
+        grp.Controls.Add(layout);
+
+        var pnlButtons = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 60,
-            BackColor = Theme.BgApp,
-            Padding = new Padding(0, 0, 20, 0)
+            Height = 45,
+            Padding = new Padding(0, 0, 12, 10)
         };
+
         _btnCancel = new Button
         {
-            Text = "Huy bo",
-            Size = new Size(100, 38),
+            Text = "Hủy bỏ",
+            Size = new Size(85, 30),
             Anchor = AnchorStyles.Right,
-            Location = new Point(230, 11)
+            Location = new Point(255, 6)
         };
-        Theme.ApplySecondaryButton(_btnCancel);
         _btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         _btnSave = new Button
         {
-            Text = "Luu lai",
-            Size = new Size(100, 38),
+            Text = "Lưu lại",
+            Size = new Size(85, 30),
             Anchor = AnchorStyles.Right,
-            Location = new Point(340, 11)
+            Location = new Point(348, 6)
         };
-        Theme.ApplyPrimaryButton(_btnSave);
         _btnSave.Click += OnSaveClicked;
 
-        pnlFooter.Controls.Add(_btnCancel);
-        pnlFooter.Controls.Add(_btnSave);
+        pnlButtons.Controls.Add(_btnCancel);
+        pnlButtons.Controls.Add(_btnSave);
 
-        Controls.Add(layout);
-        Controls.Add(pnlFooter);
-        Controls.Add(pnlHeader);
+        Controls.Add(grp);
+        Controls.Add(pnlButtons);
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
@@ -190,7 +165,6 @@ public class TransactionDialog : Form
 
     private void LoadData()
     {
-        // Load accounts
         var accounts = _financeService.GetAllAccounts();
         _cboSourceAccount.Items.Clear();
         _cboDestAccount.Items.Clear();
@@ -238,7 +212,6 @@ public class TransactionDialog : Form
     {
         var type = GetSelectedType();
         bool isTransfer = type == TransactionType.Transfer;
-
         _lblDestAccount.Visible = isTransfer;
         _cboDestAccount.Visible = isTransfer;
         ReloadCategories();
@@ -266,7 +239,6 @@ public class TransactionDialog : Form
         _numAmount.Value = Math.Max(_numAmount.Minimum, tx.Amount);
         _txtNote.Text = tx.Note;
 
-        // Select Source Account
         for (int i = 0; i < _cboSourceAccount.Items.Count; i++)
         {
             if (_cboSourceAccount.Items[i] is ComboBoxItem item && (string)item.Value == tx.SourceAccountId)
@@ -276,7 +248,6 @@ public class TransactionDialog : Form
             }
         }
 
-        // Select Dest Account
         for (int i = 0; i < _cboDestAccount.Items.Count; i++)
         {
             if (_cboDestAccount.Items[i] is ComboBoxItem item && (string)item.Value == tx.DestinationAccountId)
@@ -286,7 +257,6 @@ public class TransactionDialog : Form
             }
         }
 
-        // Select Category
         for (int i = 0; i < _cboCategory.Items.Count; i++)
         {
             if (_cboCategory.Items[i] is ComboBoxItem item && (string)item.Value == tx.CategoryId)
@@ -302,13 +272,13 @@ public class TransactionDialog : Form
         var type = GetSelectedType();
         if (_numAmount.Value <= 0)
         {
-            MessageBox.Show("So tien phai lon hon 0.", "Loi nhap lieu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Số tiền phải lớn hơn 0.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
         if (_cboSourceAccount.SelectedItem is not ComboBoxItem sourceAccItem)
         {
-            MessageBox.Show("Vui long chon tai khoan thanh toan.", "Loi nhap lieu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Vui lòng chọn tài khoản/ví thanh toán.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -320,14 +290,14 @@ public class TransactionDialog : Form
         {
             if (_cboDestAccount.SelectedItem is not ComboBoxItem destAccItem)
             {
-                MessageBox.Show("Vui long chon tai khoan nhan tien.", "Loi nhap lieu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Vui lòng chọn ví nhận tiền.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             destAccId = (string)destAccItem.Value;
 
             if (sourceAccId == destAccId)
             {
-                MessageBox.Show("Tai khoan nguon va tai khoan nhan phai khac nhau.", "Loi nhap lieu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Ví gửi và ví nhận phải khác nhau.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
         }

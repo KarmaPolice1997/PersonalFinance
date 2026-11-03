@@ -22,88 +22,72 @@ public class AccountDialog : Form
 
         if (_editingAccount != null)
         {
-            Text = "Cap nhat tai khoan / vi";
+            Text = "Cập nhật tài khoản / ví";
             PopulateData(_editingAccount);
         }
         else
         {
-            Text = "Them tai khoan / vi moi";
+            Text = "Thêm tài khoản / ví mới";
         }
     }
 
     private void InitializeComponent()
     {
-        Font = Theme.FontBody;
-        BackColor = Theme.BgCard;
-        ForeColor = Theme.TextPrimary;
+        Font = Theme.FontApp;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(440, 360);
+        ClientSize = new Size(420, 240);
 
-        var pnlHeader = new Panel
+        var grp = new GroupBox
         {
+            Text = "Thông tin tài khoản ví",
             Dock = DockStyle.Top,
-            Height = 60,
-            BackColor = Theme.GridHeaderBg,
-            Padding = new Padding(20, 0, 0, 0)
+            Height = 180,
+            Location = new Point(12, 10),
+            Padding = new Padding(12)
         };
-        var lblTitle = new Label
-        {
-            Text = _editingAccount != null ? "Chinh sua tai khoan / vi" : "Tao moi tai khoan / vi tai chinh",
-            Font = Theme.FontSectionTitle,
-            ForeColor = Theme.TextPrimary,
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
-        pnlHeader.Controls.Add(lblTitle);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 4,
-            Padding = new Padding(24, 20, 24, 10)
+            Padding = new Padding(8)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
         for (int i = 0; i < 4; i++)
         {
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
         }
 
-        // 1. Ten tai khoan
-        var lblName = new Label { Text = "Ten tai khoan:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _txtName = new TextBox { Dock = DockStyle.Fill, Font = Theme.FontBody, PlaceholderText = "Vi du: Vietcombank, Vi MoMo..." };
+        var lblName = new Label { Text = "Tên tài khoản / Ví:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _txtName = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Ví dụ: Vietcombank, Tiền mặt..." };
 
-        // 2. Loai tai khoan
-        var lblType = new Label { Text = "Loai tai khoan:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _cboType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.FontBody };
-        _cboType.Items.Add(new ComboBoxItem("Tien mat", AccountType.Cash));
-        _cboType.Items.Add(new ComboBoxItem("Tai khoan Ngan hang", AccountType.Bank));
-        _cboType.Items.Add(new ComboBoxItem("The tin dung", AccountType.CreditCard));
-        _cboType.Items.Add(new ComboBoxItem("Vi dien tu", AccountType.EWallet));
-        _cboType.Items.Add(new ComboBoxItem("So tiet kiem", AccountType.Savings));
+        var lblType = new Label { Text = "Loại tài khoản:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _cboType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+        _cboType.Items.Add(new ComboBoxItem("Tiền mặt", AccountType.Cash));
+        _cboType.Items.Add(new ComboBoxItem("Tài khoản ngân hàng", AccountType.Bank));
+        _cboType.Items.Add(new ComboBoxItem("Thẻ tín dụng", AccountType.CreditCard));
+        _cboType.Items.Add(new ComboBoxItem("Ví điện tử", AccountType.EWallet));
+        _cboType.Items.Add(new ComboBoxItem("Sổ tiết kiệm", AccountType.Savings));
         _cboType.SelectedIndex = 0;
 
-        // 3. So du ban dau
-        var lblInitial = new Label { Text = "So du ban dau:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
+        var lblInitial = new Label { Text = "Số dư ban đầu:", Anchor = AnchorStyles.Left, AutoSize = true };
         _numInitialBalance = new NumericUpDown
         {
             Dock = DockStyle.Fill,
-            Font = Theme.FontBody,
             Minimum = 0,
             Maximum = 1000000000000M,
             Increment = 500000,
             ThousandsSeparator = true
         };
 
-        // 4. Mo ta
-        var lblDesc = new Label { Text = "Mo ta / Ghi chu:", Anchor = AnchorStyles.Left, AutoSize = true, Font = Theme.FontBodyBold };
-        _txtDescription = new TextBox { Dock = DockStyle.Fill, Font = Theme.FontBody, PlaceholderText = "Mo ta them (khong bat buoc)" };
+        var lblDesc = new Label { Text = "Mô tả / Ghi chú:", Anchor = AnchorStyles.Left, AutoSize = true };
+        _txtDescription = new TextBox { Dock = DockStyle.Fill, PlaceholderText = "Ghi chú thêm (tùy chọn)" };
 
         layout.Controls.Add(lblName, 0, 0);
         layout.Controls.Add(_txtName, 1, 0);
@@ -114,39 +98,38 @@ public class AccountDialog : Form
         layout.Controls.Add(lblDesc, 0, 3);
         layout.Controls.Add(_txtDescription, 1, 3);
 
-        var pnlFooter = new Panel
+        grp.Controls.Add(layout);
+
+        var pnlButtons = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 60,
-            BackColor = Theme.BgApp,
-            Padding = new Padding(0, 0, 20, 0)
+            Height = 45,
+            Padding = new Padding(0, 0, 12, 10)
         };
+
         _btnCancel = new Button
         {
-            Text = "Huy bo",
-            Size = new Size(100, 38),
+            Text = "Hủy bỏ",
+            Size = new Size(85, 30),
             Anchor = AnchorStyles.Right,
-            Location = new Point(210, 11)
+            Location = new Point(225, 6)
         };
-        Theme.ApplySecondaryButton(_btnCancel);
         _btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         _btnSave = new Button
         {
-            Text = "Luu lai",
-            Size = new Size(100, 38),
+            Text = "Lưu lại",
+            Size = new Size(85, 30),
             Anchor = AnchorStyles.Right,
-            Location = new Point(320, 11)
+            Location = new Point(318, 6)
         };
-        Theme.ApplyPrimaryButton(_btnSave);
         _btnSave.Click += OnSaveClicked;
 
-        pnlFooter.Controls.Add(_btnCancel);
-        pnlFooter.Controls.Add(_btnSave);
+        pnlButtons.Controls.Add(_btnCancel);
+        pnlButtons.Controls.Add(_btnSave);
 
-        Controls.Add(layout);
-        Controls.Add(pnlFooter);
-        Controls.Add(pnlHeader);
+        Controls.Add(grp);
+        Controls.Add(pnlButtons);
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
@@ -156,7 +139,7 @@ public class AccountDialog : Form
     {
         _txtName.Text = acc.Name;
         _numInitialBalance.Value = acc.InitialBalance;
-        _numInitialBalance.Enabled = false; // Cannot edit initial balance after creation to avoid mismatch
+        _numInitialBalance.Enabled = false;
         _txtDescription.Text = acc.Description;
 
         for (int i = 0; i < _cboType.Items.Count; i++)
@@ -174,7 +157,7 @@ public class AccountDialog : Form
         var name = _txtName.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            MessageBox.Show("Vui long nhap ten tai khoan.", "Loi nhap lieu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Vui lòng nhập tên tài khoản/ví.", "Lỗi nhập liệu", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             _txtName.Focus();
             return;
         }

@@ -1,130 +1,84 @@
+using PersonalFinance.Data;
 using PersonalFinance.Models;
 
 namespace PersonalFinance.Services;
 
 public class FinanceService : IFinanceService
 {
-    private readonly IDataContext _dataContext;
+    private readonly SqliteDatabase _db;
 
     public event EventHandler? DataChanged;
 
-    public FinanceService(IDataContext dataContext)
+    public string DatabasePath => _db.DatabasePath;
+
+    public FinanceService(SqliteDatabase db)
     {
-        _dataContext = dataContext;
+        _db = db;
     }
 
-    public IReadOnlyList<Account> GetAllAccounts()
-    {
-        return _dataContext.Accounts.GetAll().OrderBy(a => a.Name).ToList();
-    }
+    public List<Account> GetAllAccounts() => _db.GetAccounts();
 
-    public Account? GetAccount(string id)
+    public void CreateAccount(Account a)
     {
-        return _dataContext.Accounts.GetById(id);
-    }
+        if (string.IsNullOrWhiteSpace(a.Name))
+            throw new ArgumentException("Tên tài khoản không được để trống.");
 
-    public void CreateAccount(Account account)
-    {
-        ArgumentNullException.ThrowIfNull(account);
-        if (string.IsNullOrWhiteSpace(account.Name))
-            throw new ArgumentException("Ten tai khoan khong duoc de trong.");
-
-        account.CurrentBalance = account.InitialBalance;
-        _dataContext.Accounts.Add(account);
-        _dataContext.SaveChanges();
+        a.CurrentBalance = a.InitialBalance;
+        _db.InsertAccount(a);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateAccount(Account account)
+    public void UpdateAccount(Account a)
     {
-        ArgumentNullException.ThrowIfNull(account);
-        _dataContext.Accounts.Update(account);
-        RecalculateBalances();
-        _dataContext.SaveChanges();
+        if (string.IsNullOrWhiteSpace(a.Name))
+            throw new ArgumentException("Tên tài khoản không được để trống.");
+
+        _db.UpdateAccount(a);
+        _db.RecalculateBalances();
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public bool DeleteAccount(string id, out string errorMessage)
+    public bool DeleteAccount(string id, out string error)
     {
-        var hasTransactions = _dataContext.Transactions.GetAll()
-            .Any(t => t.SourceAccountId == id || t.DestinationAccountId == id);
-
-        if (hasTransactions)
+        bool success = _db.DeleteAccount(id, out error);
+        if (success)
         {
-            errorMessage = "Khong the xoa tai khoan dang co lich su giao dich. Hay xoa hoac doi giao dich truoc.";
-            return false;
-        }
-
-        var deleted = _dataContext.Accounts.Delete(id);
-        if (deleted)
-        {
-            _dataContext.SaveChanges();
             DataChanged?.Invoke(this, EventArgs.Empty);
-            errorMessage = string.Empty;
-            return true;
         }
-
-        errorMessage = "Khong tim thay tai khoan de xoa.";
-        return false;
+        return success;
     }
 
-    public IReadOnlyList<Category> GetAllCategories(TransactionType? type = null)
-    {
-        var query = _dataContext.Categories.GetAll().AsEnumerable();
-        if (type.HasValue)
-        {
-            query = query.Where(c => c.Type == type.Value);
-        }
-        return query.OrderBy(c => c.Name).ToList();
-    }
+    public List<Category> GetAllCategories(TransactionType? type = null) => _db.GetCategories(type);
 
-    public Category? GetCategory(string id)
+    public void CreateCategory(Category c)
     {
-        return _dataContext.Categories.GetById(id);
-    }
+        if (string.IsNullOrWhiteSpace(c.Name))
+            throw new ArgumentException("Tên danh mục không được để trống.");
 
-    public void CreateCategory(Category category)
-    {
-        ArgumentNullException.ThrowIfNull(category);
-        if (string.IsNullOrWhiteSpace(category.Name))
-            throw new ArgumentException("Ten danh muc khong duoc de trong.");
-
-        _dataContext.Categories.Add(category);
-        _dataContext.SaveChanges();
+        _db.InsertCategory(c);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateCategory(Category category)
+    public void UpdateCategory(Category c)
     {
-        ArgumentNullException.ThrowIfNull(category);
-        _dataContext.Categories.Update(category);
-        _dataContext.SaveChanges();
+        if (string.IsNullOrWhiteSpace(c.Name))
+            throw new ArgumentException("Tên danh mục không được để trống.");
+
+        _db.UpdateCategory(c);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public bool DeleteCategory(string id, out string errorMessage)
+    public bool DeleteCategory(string id, out string error)
     {
-        var hasTransactions = _dataContext.Transactions.GetAll().Any(t => t.CategoryId == id);
-        if (hasTransactions)
+        bool success = _db.DeleteCategory(id, out error);
+        if (success)
         {
-            errorMessage = "Khong the xoa danh muc dang duoc su dung trong giao dich.";
-            return false;
-        }
-
-        var deleted = _dataContext.Categories.Delete(id);
-        if (deleted)
-        {
-            _dataContext.SaveChanges();
             DataChanged?.Invoke(this, EventArgs.Empty);
-            errorMessage = string.Empty;
-            return true;
         }
-
-        errorMessage = "Khong tim thay danh muc can xoa.";
-        return false;
+        return success;
     }
 
-    public IReadOnlyList<Transaction> GetTransactions(
+    public List<Transaction> GetTransactions(
         DateTime? fromDate = null,
         DateTime? toDate = null,
         string? accountId = null,
@@ -132,7 +86,7 @@ public class FinanceService : IFinanceService
         TransactionType? type = null,
         string? keyword = null)
     {
-        var query = _dataContext.Transactions.GetAll().AsEnumerable();
+        var query = _db.GetTransactions().AsEnumerable();
 
         if (fromDate.HasValue)
             query = query.Where(t => t.TransactionDate.Date >= fromDate.Value.Date);
@@ -151,65 +105,55 @@ public class FinanceService : IFinanceService
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            var kw = keyword.Trim().ToLowerInvariant();
-            query = query.Where(t => (t.Note ?? string.Empty).ToLowerInvariant().Contains(kw));
+            string kw = keyword.Trim().ToLowerInvariant();
+            query = query.Where(t => t.Note.ToLowerInvariant().Contains(kw));
         }
 
-        return query.OrderByDescending(t => t.TransactionDate)
-                    .ThenByDescending(t => t.CreatedAt)
-                    .ToList();
+        return query.OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAt).ToList();
     }
 
-    public void AddTransaction(Transaction transaction)
+    public void AddTransaction(Transaction t)
     {
-        ArgumentNullException.ThrowIfNull(transaction);
-        if (transaction.Amount <= 0)
-            throw new ArgumentException("So tien giao dich phai lon hon 0.");
+        if (t.Amount <= 0)
+            throw new ArgumentException("Số tiền giao dịch phải lớn hơn 0.");
 
-        _dataContext.Transactions.Add(transaction);
-        RecalculateBalances();
-        _dataContext.SaveChanges();
+        _db.InsertTransaction(t);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateTransaction(Transaction original, Transaction updated)
+    public void UpdateTransaction(Transaction t)
     {
-        ArgumentNullException.ThrowIfNull(original);
-        ArgumentNullException.ThrowIfNull(updated);
+        if (t.Amount <= 0)
+            throw new ArgumentException("Số tiền giao dịch phải lớn hơn 0.");
 
-        _dataContext.Transactions.Update(updated);
-        RecalculateBalances();
-        _dataContext.SaveChanges();
+        _db.UpdateTransaction(t);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void DeleteTransaction(string transactionId)
+    public void DeleteTransaction(string id)
     {
-        var deleted = _dataContext.Transactions.Delete(transactionId);
-        if (deleted)
-        {
-            RecalculateBalances();
-            _dataContext.SaveChanges();
-            DataChanged?.Invoke(this, EventArgs.Empty);
-        }
+        _db.DeleteTransaction(id);
+        DataChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void TransferFunds(string fromAccountId, string toAccountId, decimal amount, DateTime date, string note)
     {
         if (fromAccountId == toAccountId)
-            throw new ArgumentException("Tai khoan nguon va tai khoan dich phai khac nhau.");
+            throw new ArgumentException("Ví gửi và ví nhận phải khác nhau.");
 
         if (amount <= 0)
-            throw new ArgumentException("So tien chuyen phai lon hon 0.");
+            throw new ArgumentException("Số tiền chuyển phải lớn hơn 0.");
 
         var tx = new Transaction
         {
+            Id = Guid.NewGuid().ToString("N"),
             TransactionDate = date,
             Amount = amount,
             Type = TransactionType.Transfer,
             SourceAccountId = fromAccountId,
             DestinationAccountId = toAccountId,
-            Note = string.IsNullOrWhiteSpace(note) ? "Chuyen khoan giua cac vi" : note
+            Note = string.IsNullOrWhiteSpace(note) ? "Chuyển tiền giữa các ví" : note,
+            CreatedAt = DateTime.Now
         };
 
         AddTransaction(tx);
@@ -217,9 +161,9 @@ public class FinanceService : IFinanceService
 
     public FinancialSummary GetSummary(DateTime? fromDate = null, DateTime? toDate = null)
     {
-        var accounts = _dataContext.Accounts.GetAll();
+        var accounts = _db.GetAccounts();
         var allTx = GetTransactions(fromDate, toDate);
-        var categories = _dataContext.Categories.GetAll().ToDictionary(c => c.Id, c => c.Name);
+        var categories = _db.GetCategories().ToDictionary(c => c.Id, c => c.Name);
 
         var summary = new FinancialSummary
         {
@@ -234,50 +178,23 @@ public class FinanceService : IFinanceService
         }
 
         var expenseTx = allTx.Where(t => t.Type == TransactionType.Expense);
-        foreach (var group in expenseTx.GroupBy(t => t.CategoryId ?? "Khac"))
+        foreach (var group in expenseTx.GroupBy(t => t.CategoryId ?? "Khác"))
         {
-            var catName = categories.TryGetValue(group.Key, out var name) ? name : "Khac";
+            string catName = categories.TryGetValue(group.Key, out var name) ? name : "Khác";
             summary.ExpenseByCategory[catName] = group.Sum(t => t.Amount);
         }
 
         return summary;
     }
 
-    public void RefreshData()
+    public void BackupDatabase(string targetPath)
     {
-        _dataContext.Reload();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        _db.BackupDatabase(targetPath);
     }
 
-    private void RecalculateBalances()
+    public void RestoreDatabase(string sourcePath)
     {
-        var accounts = _dataContext.Accounts.GetAll().ToDictionary(a => a.Id);
-        foreach (var acc in accounts.Values)
-        {
-            acc.CurrentBalance = acc.InitialBalance;
-        }
-
-        foreach (var tx in _dataContext.Transactions.GetAll().OrderBy(t => t.TransactionDate).ThenBy(t => t.CreatedAt))
-        {
-            if (tx.Type == TransactionType.Income && tx.SourceAccountId != null && accounts.TryGetValue(tx.SourceAccountId, out var targetAcc))
-            {
-                targetAcc.CurrentBalance += tx.Amount;
-            }
-            else if (tx.Type == TransactionType.Expense && tx.SourceAccountId != null && accounts.TryGetValue(tx.SourceAccountId, out var srcAcc))
-            {
-                srcAcc.CurrentBalance -= tx.Amount;
-            }
-            else if (tx.Type == TransactionType.Transfer)
-            {
-                if (tx.SourceAccountId != null && accounts.TryGetValue(tx.SourceAccountId, out var fromAcc))
-                {
-                    fromAcc.CurrentBalance -= tx.Amount;
-                }
-                if (tx.DestinationAccountId != null && accounts.TryGetValue(tx.DestinationAccountId, out var toAcc))
-                {
-                    toAcc.CurrentBalance += tx.Amount;
-                }
-            }
-        }
+        _db.RestoreDatabase(sourcePath);
+        DataChanged?.Invoke(this, EventArgs.Empty);
     }
 }
