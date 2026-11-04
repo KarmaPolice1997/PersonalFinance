@@ -197,4 +197,14 @@ public class FinanceService : IFinanceService
         _db.RestoreDatabase(sourcePath);
         DataChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    public string GetSetting(string key, string defaultValue = "")
+    {
+        return _db.GetSetting(key, defaultValue);
+    }
+
+    public void SetSetting(string key, string value)
+    {
+        _db.SetSetting(key, value);
+    }
 }

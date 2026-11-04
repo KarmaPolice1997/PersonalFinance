@@ -128,6 +128,8 @@ public class TransferDialog : Form
 
         AcceptButton = _btnTransfer;
         CancelButton = _btnCancel;
+
+        Theme.ApplyTheme(this);
     }
 
     private void LoadAccounts()

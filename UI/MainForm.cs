@@ -52,6 +52,14 @@ public partial class MainForm : Form
     private TextBox _txtDbPath = null!;
     private Label _lblDbSize = null!;
 
+    // Menu và Tùy chọn Giao diện (Dark / Light / Device)
+    private ToolStripMenuItem _mnuThemeDevice = null!;
+    private ToolStripMenuItem _mnuThemeLight = null!;
+    private ToolStripMenuItem _mnuThemeDark = null!;
+    private RadioButton _radThemeDevice = null!;
+    private RadioButton _radThemeLight = null!;
+    private RadioButton _radThemeDark = null!;
+
     public MainForm(IFinanceService financeService)
     {
         _financeService = financeService;
@@ -65,7 +73,15 @@ public partial class MainForm : Form
             }
         };
 
-        RefreshAllData();
+        Theme.ThemeChanged += (s, e) =>
+        {
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new Action(ApplyCurrentTheme));
+            }
+        };
+
+        ApplyCurrentTheme();
     }
 
     private void InitializeComponent()
@@ -90,6 +106,14 @@ public partial class MainForm : Form
         mnuAction.DropDownItems.Add("Thêm ví / tài khoản...", null, (s, e) => OpenAddAccount());
         mnuAction.DropDownItems.Add("Thêm danh mục...", null, (s, e) => OpenAddCategory());
 
+        var mnuTheme = new ToolStripMenuItem("Giao diện");
+        _mnuThemeDevice = new ToolStripMenuItem("Theo thiết bị (Hệ thống)", null, (s, e) => ChangeTheme(AppTheme.Device));
+        _mnuThemeLight = new ToolStripMenuItem("Sáng (Trắng)", null, (s, e) => ChangeTheme(AppTheme.Light));
+        _mnuThemeDark = new ToolStripMenuItem("Tối (Đen)", null, (s, e) => ChangeTheme(AppTheme.Dark));
+        mnuTheme.DropDownItems.Add(_mnuThemeDevice);
+        mnuTheme.DropDownItems.Add(_mnuThemeLight);
+        mnuTheme.DropDownItems.Add(_mnuThemeDark);
+
         var mnuHelp = new ToolStripMenuItem("Trợ giúp");
         mnuHelp.DropDownItems.Add("Thông tin ứng dụng", null, (s, e) =>
         {
@@ -98,12 +122,14 @@ public partial class MainForm : Form
                 "Nền tảng: WinForms (.NET 10 / C#)\n" +
                 "Cơ sở dữ liệu: SQLite (winsqlite3 native engine)\n" +
                 "Kiến trúc: Chuẩn hướng đối tượng UML\n" +
+                "Hỗ trợ chế độ hiển thị: Theo thiết bị / Sáng / Tối\n" +
                 "Hỗ trợ đầy đủ Tiếng Việt và Sao lưu/Phục hồi dữ liệu.",
                 "Giới thiệu", MessageBoxButtons.OK, MessageBoxIcon.Information);
         });
 
         menuStrip.Items.Add(mnuFile);
         menuStrip.Items.Add(mnuAction);
+        menuStrip.Items.Add(mnuTheme);
         menuStrip.Items.Add(mnuHelp);
         MainMenuStrip = menuStrip;
         Controls.Add(menuStrip);
@@ -122,8 +148,12 @@ public partial class MainForm : Form
         {
             Dock = DockStyle.Fill,
             Font = Theme.FontApp,
-            Padding = new Point(12, 6)
+            Padding = new Point(14, 7),
+            DrawMode = TabDrawMode.OwnerDrawFixed,
+            ItemSize = new Size(130, 30),
+            SizeMode = TabSizeMode.Fixed
         };
+        _tabControl.DrawItem += OnTabControlDrawItem;
 
         _tabControl.TabPages.Add(CreateOverviewTab());
         _tabControl.TabPages.Add(CreateTransactionsTab());
@@ -232,8 +262,8 @@ public partial class MainForm : Form
     private Control CreateStatBox(string title, out Label valLabel, Color valColor)
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
-        var lblTitle = new Label { Text = title, Dock = DockStyle.Top, Height = 18, Font = Theme.FontApp, ForeColor = SystemColors.GrayText };
-        valLabel = new Label { Text = "0 VND", Dock = DockStyle.Fill, Font = Theme.FontStat, ForeColor = valColor, TextAlign = ContentAlignment.MiddleLeft };
+        var lblTitle = new Label { Text = title, Dock = DockStyle.Top, Height = 18, Font = Theme.FontApp };
+        valLabel = new Label { Text = "0 VND", Dock = DockStyle.Fill, Font = Theme.FontStat, ForeColor = valColor, TextAlign = ContentAlignment.MiddleLeft, Tag = "semantic" };
         panel.Controls.Add(valLabel);
         panel.Controls.Add(lblTitle);
         return panel;
@@ -591,11 +621,61 @@ public partial class MainForm : Form
     }
     #endregion
 
-    #region Tab 6: Sao lưu & Khôi phục
+    #region Tab 6: Cài đặt & Sao lưu
     private TabPage CreateBackupTab()
     {
-        var tab = new TabPage("Sao lưu & Khôi phục") { Padding = new Padding(16) };
+        var tab = new TabPage("Cài đặt & Sao lưu") { Padding = new Padding(16), AutoScroll = true };
 
+        // 1. Chế độ hiển thị Giao diện
+        var grpTheme = new GroupBox
+        {
+            Text = "Chế độ hiển thị giao diện",
+            Dock = DockStyle.Top,
+            Height = 110,
+            Padding = new Padding(12)
+        };
+
+        var pnlThemeRadios = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = false
+        };
+
+        _radThemeDevice = new RadioButton
+        {
+            Text = "Theo thiết bị (Hệ thống) - Tự động đổi sáng/tối đồng bộ theo Windows",
+            AutoSize = true,
+            Margin = new Padding(4, 3, 4, 3)
+        };
+        _radThemeDevice.Click += (s, e) => ChangeTheme(AppTheme.Device);
+
+        _radThemeLight = new RadioButton
+        {
+            Text = "Giao diện Sáng (Trắng) - Nền sáng truyền thống, rõ ràng",
+            AutoSize = true,
+            Margin = new Padding(4, 3, 4, 3)
+        };
+        _radThemeLight.Click += (s, e) => ChangeTheme(AppTheme.Light);
+
+        _radThemeDark = new RadioButton
+        {
+            Text = "Giao diện Tối (Đen) - Dịu mắt, độ tương phản cao, bảo vệ thị lực",
+            AutoSize = true,
+            Margin = new Padding(4, 3, 4, 3)
+        };
+        _radThemeDark.Click += (s, e) => ChangeTheme(AppTheme.Dark);
+
+        pnlThemeRadios.Controls.Add(_radThemeDevice);
+        pnlThemeRadios.Controls.Add(_radThemeLight);
+        pnlThemeRadios.Controls.Add(_radThemeDark);
+
+        grpTheme.Controls.Add(pnlThemeRadios);
+
+        var pnlSpacer = new Panel { Dock = DockStyle.Top, Height = 10 };
+
+        // 2. Thông tin cơ sở dữ liệu
         var grpCurrent = new GroupBox
         {
             Text = "Cơ sở dữ liệu SQLite hiện tại",
@@ -611,14 +691,15 @@ public partial class MainForm : Form
         grpCurrent.Controls.Add(lblPathTitle);
         grpCurrent.Controls.Add(_txtDbPath);
         grpCurrent.Controls.Add(_lblDbSize);
-        tab.Controls.Add(grpCurrent);
 
+        var pnlSpacer2 = new Panel { Dock = DockStyle.Top, Height = 10 };
+
+        // 3. Thao tác Sao lưu & Phục hồi
         var grpActions = new GroupBox
         {
             Text = "Thao tác sao lưu và phục hồi dữ liệu an toàn",
             Dock = DockStyle.Top,
-            Height = 220,
-            Location = new Point(0, 120),
+            Height = 175,
             Padding = new Padding(16)
         };
 
@@ -628,14 +709,14 @@ public partial class MainForm : Form
             Font = Theme.FontAppBold,
             Width = 240,
             Height = 42,
-            Location = new Point(20, 35)
+            Location = new Point(20, 32)
         };
         btnBackup.Click += (s, e) => PerformBackup();
 
         var lblBackupHelp = new Label
         {
             Text = "Tạo một bản sao hoàn chỉnh của toàn bộ tài khoản, danh mục và sổ giao dịch ra một tệp tin riêng biệt để lưu trữ an toàn.",
-            Location = new Point(275, 42),
+            Location = new Point(275, 38),
             Size = new Size(500, 36)
         };
 
@@ -645,14 +726,14 @@ public partial class MainForm : Form
             Font = Theme.FontAppBold,
             Width = 240,
             Height = 42,
-            Location = new Point(20, 105)
+            Location = new Point(20, 95)
         };
         btnRestore.Click += (s, e) => PerformRestore();
 
         var lblRestoreHelp = new Label
         {
             Text = "Khôi phục dữ liệu từ tệp sao lưu đã tạo trước đó. Lưu ý: Dữ liệu hiện tại sẽ được thay thế bằng dữ liệu trong tệp sao lưu.",
-            Location = new Point(275, 112),
+            Location = new Point(275, 102),
             Size = new Size(500, 36)
         };
 
@@ -661,7 +742,13 @@ public partial class MainForm : Form
         grpActions.Controls.Add(btnRestore);
         grpActions.Controls.Add(lblRestoreHelp);
 
+        // Add controls in reverse dock order
         tab.Controls.Add(grpActions);
+        tab.Controls.Add(pnlSpacer2);
+        tab.Controls.Add(grpCurrent);
+        tab.Controls.Add(pnlSpacer);
+        tab.Controls.Add(grpTheme);
+
         return tab;
     }
     #endregion
@@ -674,12 +761,15 @@ public partial class MainForm : Form
 
         // Tab 1: Overview
         _lblAssetValue.Text = Theme.FormatMoney(summary.TotalAssets);
+        _lblAssetValue.ForeColor = Theme.TextPrimary;
         _lblIncomeValue.Text = $"+{Theme.FormatMoney(summary.TotalIncome)}";
+        _lblIncomeValue.ForeColor = Theme.ColorIncome;
         _lblExpenseValue.Text = $"-{Theme.FormatMoney(summary.TotalExpense)}";
+        _lblExpenseValue.ForeColor = Theme.ColorExpense;
 
         decimal net = summary.NetSavings;
         _lblSavingsValue.Text = (net >= 0 ? "+" : "") + Theme.FormatMoney(net);
-        _lblSavingsValue.ForeColor = net >= 0 ? SystemColors.HotTrack : Theme.ColorExpense;
+        _lblSavingsValue.ForeColor = net >= 0 ? Theme.ColorSavings : Theme.ColorExpense;
 
         LoadRecentGrid();
         LoadFilterAccounts();
@@ -688,6 +778,7 @@ public partial class MainForm : Form
         LoadCategories();
         GenerateReport();
         UpdateBackupTabInfo();
+        UpdateThemeSelectionUI();
     }
 
     private void RefreshCurrentTab()
@@ -867,7 +958,7 @@ public partial class MainForm : Form
 
             var row = _gridAccounts.Rows[rowIdx];
             row.Cells["CurrentBalance"].Style.Font = Theme.FontAppBold;
-            row.Cells["CurrentBalance"].Style.ForeColor = a.CurrentBalance >= 0 ? SystemColors.HotTrack : Theme.ColorExpense;
+            row.Cells["CurrentBalance"].Style.ForeColor = a.CurrentBalance >= 0 ? Theme.ColorSavings : Theme.ColorExpense;
         }
 
         _lblAccTotal.Text = $"Tổng số dư khả dụng trên tất cả các ví: {Theme.FormatMoney(total)}";
@@ -901,14 +992,17 @@ public partial class MainForm : Form
         var summary = _financeService.GetSummary(fromDate, toDate);
 
         _lblRepIncome.Text = Theme.FormatMoney(summary.TotalIncome);
+        _lblRepIncome.ForeColor = Theme.ColorIncome;
         _lblRepExpense.Text = Theme.FormatMoney(summary.TotalExpense);
+        _lblRepExpense.ForeColor = Theme.ColorExpense;
 
         decimal savings = summary.NetSavings;
         _lblRepSavings.Text = (savings >= 0 ? "+" : "") + Theme.FormatMoney(savings);
-        _lblRepSavings.ForeColor = savings >= 0 ? SystemColors.HotTrack : Theme.ColorExpense;
+        _lblRepSavings.ForeColor = savings >= 0 ? Theme.ColorSavings : Theme.ColorExpense;
 
         decimal rate = summary.TotalIncome > 0 ? (savings / summary.TotalIncome) * 100M : 0;
         _lblRepRate.Text = $"{rate:F1}%";
+        _lblRepRate.ForeColor = Theme.ColorTransfer;
 
         // Grid Chi tiêu theo danh mục
         _gridRepExpenses.Rows.Clear();
@@ -1135,6 +1229,63 @@ public partial class MainForm : Form
                     MessageBox.Show($"Lỗi khi phục hồi dữ liệu: {ex.Message}", "Lỗi phục hồi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+    }
+    #endregion
+
+    #region Theme Management
+    private void ChangeTheme(AppTheme mode)
+    {
+        Theme.SetTheme(mode, _financeService);
+        ApplyCurrentTheme();
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        Theme.ApplyTheme(this);
+        UpdateThemeSelectionUI();
+        _tabControl.Invalidate();
+        RefreshAllData();
+    }
+
+    private void UpdateThemeSelectionUI()
+    {
+        var mode = Theme.CurrentMode;
+
+        if (_mnuThemeDevice != null) _mnuThemeDevice.Checked = (mode == AppTheme.Device);
+        if (_mnuThemeLight != null) _mnuThemeLight.Checked = (mode == AppTheme.Light);
+        if (_mnuThemeDark != null) _mnuThemeDark.Checked = (mode == AppTheme.Dark);
+
+        if (_radThemeDevice != null) _radThemeDevice.Checked = (mode == AppTheme.Device);
+        if (_radThemeLight != null) _radThemeLight.Checked = (mode == AppTheme.Light);
+        if (_radThemeDark != null) _radThemeDark.Checked = (mode == AppTheme.Dark);
+    }
+
+    private void OnTabControlDrawItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || e.Index >= _tabControl.TabPages.Count) return;
+
+        var page = _tabControl.TabPages[e.Index];
+        bool selected = (_tabControl.SelectedIndex == e.Index);
+
+        using var brush = new SolidBrush(selected ? Theme.BgPanel : Theme.BgApp);
+        e.Graphics.FillRectangle(brush, e.Bounds);
+
+        Color textColor = selected ? Theme.TextPrimary : Theme.TextSecondary;
+        Font font = selected ? Theme.FontAppBold : Theme.FontApp;
+
+        TextRenderer.DrawText(
+            e.Graphics,
+            page.Text,
+            font,
+            e.Bounds,
+            textColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        if (selected)
+        {
+            using var linePen = new Pen(Theme.ColorSavings, 3);
+            e.Graphics.DrawLine(linePen, e.Bounds.Left + 4, e.Bounds.Bottom - 2, e.Bounds.Right - 4, e.Bounds.Bottom - 2);
         }
     }
     #endregion

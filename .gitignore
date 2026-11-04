@@ -8,6 +8,7 @@ packages/
 *.sln.docstates
 .vs/
 .vscode/
+.idea/
 
 ## App Local Data
 finance_data.json

@@ -161,6 +161,8 @@ public class TransactionDialog : Form
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
+
+        Theme.ApplyTheme(this);
     }
 
     private void LoadData()

@@ -21,6 +21,9 @@ static class Program
         using var sqliteDb = new SqliteDatabase();
         IFinanceService financeService = new FinanceService(sqliteDb);
 
+        // Khởi tạo giao diện (chế độ Dark / Light / Device)
+        Theme.Initialize(financeService);
+
         Application.Run(new MainForm(financeService));
     }
 }

@@ -7,6 +7,7 @@ Phần mềm Quản Lý Tài Chính Cá Nhân với giao diện cơ bản, chu�
 ## 1. Điểm Nổi Bật
 
 * **Giao diện chuẩn mực Windows Forms:** Sử dụng `TabControl` tiêu chuẩn và các `GroupBox` chia khối mạch lạc, không lệch khung hình, tương thích tốt với mọi độ phân giải.
+* **Hỗ trợ 3 chế độ hiển thị (Dark / White / Device):** Chuyển đổi linh hoạt giữa giao diện Tối (Đen), Sáng (Trắng) và Theo thiết bị (tự động đồng bộ theo Windows), hỗ trợ tiêu đề cửa sổ DWM Native Dark.
 * **Không màu mè, không gradient, không emoji:** Màu sắc cơ bản, nhã nhặn, chuyên nghiệp theo chuẩn ứng dụng quản trị văn phòng.
 * **100% Tiếng Việt có dấu:** Toàn bộ bảng biểu, tiêu đề, nút bấm, thông báo đều sử dụng tiếng Việt tự nhiên, chuẩn mực.
 * **Font Segoe UI chuẩn hóa:** Toàn bộ thành phần giao diện chỉ sử dụng font `Segoe UI`.
@@ -27,12 +28,12 @@ PersonalFinance/
 │   ├── Transaction.cs          # Thực thể Giao dịch tài chính
 │   └── FinancialSummary.cs     # Đối tượng tổng hợp số liệu thống kê
 ├── Data/                       # Lớp Cơ Sở Dữ Liệu SQLite
-│   └── SqliteDatabase.cs       # Động cơ SQLite native, CRUD, tính toán số dư, Backup/Restore
+│   └── SqliteDatabase.cs       # Động cơ SQLite native, CRUD, tính toán số dư, Settings, Backup/Restore
 ├── Services/                   # Lớp Nghiệp Vụ
 │   ├── IFinanceService.cs      # Interface định nghĩa toàn bộ nghiệp vụ
 │   └── FinanceService.cs       # Cầu nối giữa UI và CSDL, xử lý logic & sự kiện
 ├── UI/                         # Lớp Giao Diện Trực Quan (WinForms)
-│   ├── Theme.cs                # Quản lý tập trung font Segoe UI và định dạng tiền tệ
+│   ├── Theme.cs                # Quản lý giao diện Dark/Light/Device, font Segoe UI, DWM titlebar
 │   ├── MainForm.cs             # Cửa sổ chính với TabControl (6 Tab chức năng)
 │   └── Dialogs/                # Hộp thoại nhập liệu chuẩn Windows
 │       ├── TransactionDialog.cs# Thêm / sửa giao dịch
@@ -52,7 +53,7 @@ PersonalFinance/
 3. **Tài khoản & Ví:** Quản lý ví tiền mặt, tài khoản ngân hàng, thẻ tín dụng, ví điện tử, sổ tiết kiệm; hỗ trợ chuyển tiền nội bộ giữa các ví.
 4. **Danh mục:** Quản lý danh mục chi tiêu và thu nhập.
 5. **Báo cáo & Thống kê:** Báo cáo tỷ lệ tiết kiệm (%), bảng chi tiêu theo danh mục (%) và bảng phân bổ số dư trên từng ví.
-6. **Sao lưu & Khôi phục:** Xem vị trí và dung lượng CSDL hiện tại, thực hiện sao lưu tệp `.db` và khôi phục khi cần.
+6. **Cài đặt & Sao lưu:** Tùy chọn 3 chế độ giao diện (Theo thiết bị / Sáng / Tối), xem vị trí/dung lượng CSDL SQLite hiện tại, thực hiện sao lưu tệp `.db` và khôi phục khi cần.
 
 ---
 

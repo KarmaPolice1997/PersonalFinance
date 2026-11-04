@@ -133,6 +133,8 @@ public class AccountDialog : Form
 
         AcceptButton = _btnSave;
         CancelButton = _btnCancel;
+
+        Theme.ApplyTheme(this);
     }
 
     private void PopulateData(Account acc)

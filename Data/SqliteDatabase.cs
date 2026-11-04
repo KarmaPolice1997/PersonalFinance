@@ -135,6 +135,11 @@ public class SqliteDatabase : IDisposable
                 note TEXT,
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
         ";
         ExecuteNonQuery(ddl);
     }
@@ -599,6 +604,49 @@ public class SqliteDatabase : IDisposable
         {
             Open();
             RecalculateBalances();
+        }
+    }
+    #endregion
+
+    #region Settings
+    public string GetSetting(string key, string defaultValue = "")
+    {
+        Open();
+        string sql = "SELECT value FROM settings WHERE key = ?;";
+        int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
+        if (rc != SQLITE_OK) return defaultValue;
+
+        try
+        {
+            sqlite3_bind_text16(stmt, 1, key, -1, IntPtr.Zero);
+            if (sqlite3_step(stmt) == SQLITE_ROW)
+            {
+                return Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 0)) ?? defaultValue;
+            }
+        }
+        finally
+        {
+            sqlite3_finalize(stmt);
+        }
+        return defaultValue;
+    }
+
+    public void SetSetting(string key, string value)
+    {
+        Open();
+        string sql = "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
+        int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
+        if (rc != SQLITE_OK) throw new InvalidOperationException(GetLastErrorMessage());
+
+        try
+        {
+            sqlite3_bind_text16(stmt, 1, key, -1, IntPtr.Zero);
+            sqlite3_bind_text16(stmt, 2, value, -1, IntPtr.Zero);
+            sqlite3_step(stmt);
+        }
+        finally
+        {
+            sqlite3_finalize(stmt);
         }
     }
     #endregion
