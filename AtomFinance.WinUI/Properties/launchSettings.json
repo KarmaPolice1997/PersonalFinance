@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AtomFinance.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AtomFinance.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

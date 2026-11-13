@@ -105,8 +105,25 @@ public class FinanceService : IFinanceService
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            string kw = keyword.Trim().ToLowerInvariant();
-            query = query.Where(t => t.Note.ToLowerInvariant().Contains(kw));
+            string kw = keyword.Trim();
+            var categories = _db.GetCategories().ToDictionary(c => c.Id, c => c.Name);
+            var accounts = _db.GetAccounts().ToDictionary(a => a.Id, a => a.Name);
+
+            query = query.Where(t =>
+            {
+                if (t.Note.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (t.CategoryId != null && categories.TryGetValue(t.CategoryId, out var catName) &&
+                    catName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (t.SourceAccountId != null && accounts.TryGetValue(t.SourceAccountId, out var accName) &&
+                    accName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return false;
+            });
         }
 
         return query.OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAt).ToList();

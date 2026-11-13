@@ -15,3 +15,5 @@ finance_data.json
 *.db
 *.db-journal
 *.bak
+*.zip
+_backup/

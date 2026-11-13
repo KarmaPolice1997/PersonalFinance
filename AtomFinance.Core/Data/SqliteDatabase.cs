@@ -53,6 +53,9 @@ public class SqliteDatabase : IDisposable
     [DllImport(DllName, EntryPoint = "sqlite3_errmsg16", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr sqlite3_errmsg16(IntPtr db);
 
+    [DllImport(DllName, EntryPoint = "sqlite3_free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void sqlite3_free(IntPtr ptr);
+
     private IntPtr _db = IntPtr.Zero;
     private readonly string _dbPath;
 
@@ -97,10 +100,20 @@ public class SqliteDatabase : IDisposable
         Open();
         byte[] utf8 = Encoding.UTF8.GetBytes(sql + "\0");
         int rc = sqlite3_exec(_db, utf8, IntPtr.Zero, IntPtr.Zero, out var errMsgPtr);
-        if (rc != SQLITE_OK)
+        try
         {
-            string err = errMsgPtr != IntPtr.Zero ? Marshal.PtrToStringAnsi(errMsgPtr) ?? "Loi SQL" : GetLastErrorMessage();
-            throw new InvalidOperationException($"Loi thuc thi SQL: {err}\nQuery: {sql}");
+            if (rc != SQLITE_OK)
+            {
+                string err = errMsgPtr != IntPtr.Zero ? Marshal.PtrToStringAnsi(errMsgPtr) ?? "Loi SQL" : GetLastErrorMessage();
+                throw new InvalidOperationException($"Loi thuc thi SQL: {err}\nQuery: {sql}");
+            }
+        }
+        finally
+        {
+            if (errMsgPtr != IntPtr.Zero)
+            {
+                sqlite3_free(errMsgPtr);
+            }
         }
     }
 
@@ -195,8 +208,8 @@ public class SqliteDatabase : IDisposable
                     Id = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 0)) ?? "",
                     Name = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 1)) ?? "",
                     Type = (AccountType)sqlite3_column_int(stmt, 2),
-                    InitialBalance = (decimal)sqlite3_column_double(stmt, 3),
-                    CurrentBalance = (decimal)sqlite3_column_double(stmt, 4),
+                    InitialBalance = Math.Round((decimal)sqlite3_column_double(stmt, 3), 2, MidpointRounding.AwayFromZero),
+                    CurrentBalance = Math.Round((decimal)sqlite3_column_double(stmt, 4), 2, MidpointRounding.AwayFromZero),
                     Currency = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 5)) ?? "VND",
                     Description = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 6)) ?? ""
                 });
@@ -293,7 +306,7 @@ public class SqliteDatabase : IDisposable
         Open();
         var list = new List<Category>();
         string sql = type.HasValue
-            ? $"SELECT id, name, type, description FROM categories WHERE type = {(int)type.Value} ORDER BY name;"
+            ? "SELECT id, name, type, description FROM categories WHERE type = ? ORDER BY name;"
             : "SELECT id, name, type, description FROM categories ORDER BY name;";
 
         int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
@@ -301,6 +314,11 @@ public class SqliteDatabase : IDisposable
 
         try
         {
+            if (type.HasValue)
+            {
+                sqlite3_bind_int(stmt, 1, (int)type.Value);
+            }
+
             while (sqlite3_step(stmt) == SQLITE_ROW)
             {
                 list.Add(new Category
@@ -413,7 +431,7 @@ public class SqliteDatabase : IDisposable
                 {
                     Id = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 0)) ?? "",
                     TransactionDate = DateTime.TryParse(dateStr, out var d) ? d : DateTime.Today,
-                    Amount = (decimal)sqlite3_column_double(stmt, 2),
+                    Amount = Math.Round((decimal)sqlite3_column_double(stmt, 2), 2, MidpointRounding.AwayFromZero),
                     Type = (TransactionType)sqlite3_column_int(stmt, 3),
                     CategoryId = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 4)),
                     SourceAccountId = Marshal.PtrToStringUni(sqlite3_column_text16(stmt, 5)),
@@ -440,7 +458,7 @@ public class SqliteDatabase : IDisposable
         try
         {
             sqlite3_bind_text16(stmt, 1, t.Id, -1, IntPtr.Zero);
-            sqlite3_bind_text16(stmt, 2, t.TransactionDate.ToString("yyyy-MM-dd"), -1, IntPtr.Zero);
+            sqlite3_bind_text16(stmt, 2, t.TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"), -1, IntPtr.Zero);
             sqlite3_bind_double(stmt, 3, (double)t.Amount);
             sqlite3_bind_int(stmt, 4, (int)t.Type);
             if (t.CategoryId != null) sqlite3_bind_text16(stmt, 5, t.CategoryId, -1, IntPtr.Zero);
@@ -474,7 +492,7 @@ public class SqliteDatabase : IDisposable
 
         try
         {
-            sqlite3_bind_text16(stmt, 1, t.TransactionDate.ToString("yyyy-MM-dd"), -1, IntPtr.Zero);
+            sqlite3_bind_text16(stmt, 1, t.TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"), -1, IntPtr.Zero);
             sqlite3_bind_double(stmt, 2, (double)t.Amount);
             sqlite3_bind_int(stmt, 3, (int)t.Type);
             if (t.CategoryId != null) sqlite3_bind_text16(stmt, 4, t.CategoryId, -1, IntPtr.Zero);
@@ -552,17 +570,27 @@ public class SqliteDatabase : IDisposable
             }
         }
 
-        foreach (var a in accounts.Values)
+        ExecuteNonQuery("BEGIN TRANSACTION;");
+        try
         {
-            string sql = "UPDATE accounts SET current_balance = ? WHERE id = ?;";
-            int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
-            if (rc == SQLITE_OK)
+            foreach (var a in accounts.Values)
             {
-                sqlite3_bind_double(stmt, 1, (double)a.CurrentBalance);
-                sqlite3_bind_text16(stmt, 2, a.Id, -1, IntPtr.Zero);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
+                string sql = "UPDATE accounts SET current_balance = ? WHERE id = ?;";
+                int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
+                if (rc == SQLITE_OK)
+                {
+                    sqlite3_bind_double(stmt, 1, (double)Math.Round(a.CurrentBalance, 2, MidpointRounding.AwayFromZero));
+                    sqlite3_bind_text16(stmt, 2, a.Id, -1, IntPtr.Zero);
+                    sqlite3_step(stmt);
+                    sqlite3_finalize(stmt);
+                }
             }
+            ExecuteNonQuery("COMMIT;");
+        }
+        catch
+        {
+            ExecuteNonQuery("ROLLBACK;");
+            throw;
         }
     }
     #endregion

@@ -1,0 +1,88 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- DARK THEME (Default) -->
+        <ResourceDictionary x:Key="Default">
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0E0E14"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#15151F"/>
+            <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1B1B26"/>
+            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#181824"/>
+            <SolidColorBrush x:Key="SurfaceHighlightBrush" Color="#242436"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#262638"/>
+            <SolidColorBrush x:Key="BorderLightBrush" Color="#2F2F45"/>
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F2F2F8"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8E8EA0"/>
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#5B5B6E"/>
+
+            <SolidColorBrush x:Key="AccentMintBrush" Color="#3CE3B4"/>
+            <SolidColorBrush x:Key="AccentMintBgBrush" Color="#12382F"/>
+            <SolidColorBrush x:Key="AccentMintTextBrush" Color="#49E4B8"/>
+
+            <SolidColorBrush x:Key="AccentPurpleBrush" Color="#8A7CFB"/>
+            <SolidColorBrush x:Key="AccentPurpleBgBrush" Color="#26234D"/>
+            <SolidColorBrush x:Key="AccentPurpleTextBrush" Color="#B4ABFC"/>
+
+            <SolidColorBrush x:Key="AccentRedBrush" Color="#FF6B6B"/>
+            <SolidColorBrush x:Key="AccentRedBgBrush" Color="#3B1C22"/>
+
+            <SolidColorBrush x:Key="AccentYellowBrush" Color="#F2C94C"/>
+            <SolidColorBrush x:Key="AccentYellowBgBrush" Color="#3D351B"/>
+
+            <SolidColorBrush x:Key="NavActiveBgBrush" Color="#222233"/>
+            <SolidColorBrush x:Key="ChartAxisBrush" Color="#6E6E82"/>
+            <SolidColorBrush x:Key="ChartLineBrush" Color="#8A7CFB"/>
+            <SolidColorBrush x:Key="ChartGridBrush" Color="#242436"/>
+            <SolidColorBrush x:Key="DialCenterBrush" Color="#15151F"/>
+            <SolidColorBrush x:Key="GaugeTrackBrush" Color="#28283C"/>
+
+            <LinearGradientBrush x:Key="PlanetCardBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#2C2854" Offset="0.0"/>
+                <GradientStop Color="#1E1C38" Offset="0.55"/>
+                <GradientStop Color="#163832" Offset="1.0"/>
+            </LinearGradientBrush>
+        </ResourceDictionary>
+
+        <!-- LIGHT THEME -->
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F8F9FD"/>
+            <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SurfaceHighlightBrush" Color="#F0F0F5"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#EBEBF0"/>
+            <SolidColorBrush x:Key="BorderLightBrush" Color="#F0F0F5"/>
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#12121D"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#9A9AA6"/>
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#C0C0CC"/>
+
+            <SolidColorBrush x:Key="AccentMintBrush" Color="#3CE3B4"/>
+            <SolidColorBrush x:Key="AccentMintBgBrush" Color="#CAF5EC"/>
+            <SolidColorBrush x:Key="AccentMintTextBrush" Color="#1DA07E"/>
+
+            <SolidColorBrush x:Key="AccentPurpleBrush" Color="#7567F8"/>
+            <SolidColorBrush x:Key="AccentPurpleBgBrush" Color="#D8D6F9"/>
+            <SolidColorBrush x:Key="AccentPurpleTextBrush" Color="#493AC9"/>
+
+            <SolidColorBrush x:Key="AccentRedBrush" Color="#EB5757"/>
+            <SolidColorBrush x:Key="AccentRedBgBrush" Color="#FEEBEB"/>
+
+            <SolidColorBrush x:Key="AccentYellowBrush" Color="#F2C94C"/>
+            <SolidColorBrush x:Key="AccentYellowBgBrush" Color="#FDF3D7"/>
+
+            <SolidColorBrush x:Key="NavActiveBgBrush" Color="#F0F0F5"/>
+            <SolidColorBrush x:Key="ChartAxisBrush" Color="#9A9AA6"/>
+            <SolidColorBrush x:Key="ChartLineBrush" Color="#12121D"/>
+            <SolidColorBrush x:Key="ChartGridBrush" Color="#E5E5EA"/>
+            <SolidColorBrush x:Key="DialCenterBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="GaugeTrackBrush" Color="#EAEAEF"/>
+
+            <LinearGradientBrush x:Key="PlanetCardBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#E2E1FC" Offset="0.0"/>
+                <GradientStop Color="#EBEBFF" Offset="0.55"/>
+                <GradientStop Color="#C9F5EE" Offset="1.0"/>
+            </LinearGradientBrush>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

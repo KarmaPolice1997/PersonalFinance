@@ -1,0 +1,399 @@
+<Page
+    x:Class="AtomFinance.WinUI.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:AtomFinance.WinUI.Models"
+    xmlns:views="using:AtomFinance.WinUI.Views"
+    NavigationCacheMode="Required"
+    mc:Ignorable="d"
+    Background="{ThemeResource AppBackgroundBrush}">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="380" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ==================== CENTER DASHBOARD AREA ==================== -->
+        <Grid Grid.Column="0" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,0,1,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="76" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Top Header -->
+            <Border Grid.Row="0" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,0,0,1" Padding="40,0">
+                <Grid VerticalAlignment="Center">
+                    <TextBlock Text="Tổng quan" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Atom Financial Overview" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Row 1: Balance & Activity Chart -->
+            <Grid Grid.Row="1" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Your Balance Card -->
+                <StackPanel Grid.Column="0" BorderBrush="{ThemeResource BorderBrush}" BorderThickness="0,0,1,0" Padding="36,28" Spacing="12">
+                    <TextBlock Text="Tổng tài sản khả dụng" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                    <TextBlock Text="{x:Bind ViewModel.TotalBalanceText, Mode=OneWay}"
+                               FontSize="32" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="16" Height="16" CornerRadius="8" Background="{ThemeResource AccentMintBrush}">
+                            <FontIcon Glyph="&#xE70E;" FontSize="9" Foreground="#12121D"/>
+                        </Border>
+                        <TextBlock Text="{x:Bind ViewModel.GrowthText, Mode=OneWay}"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AccentMintTextBrush}"/>
+                    </StackPanel>
+
+                    <Button Command="{x:Bind ViewModel.GoToAccountsCommand}"
+                            Background="{ThemeResource AccentPurpleBgBrush}"
+                            Foreground="{ThemeResource AccentPurpleTextBrush}"
+                            CornerRadius="12" Padding="20,10" BorderThickness="0" Margin="0,12,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE8C7;" FontSize="14"/>
+                            <TextBlock Text="Ví / Tài khoản" FontSize="13" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Weekly Activity Spline Chart -->
+                <Grid Grid.Column="1" Padding="36,24,36,20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="120"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <TextBlock Text="Hoạt động chi tiêu 7 ngày" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                            <TextBlock Text="7 ngày gần nhất" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Spline Curve & Tooltip -->
+                    <Canvas Grid.Row="1" Margin="0,12,0,0">
+                        <Path Stroke="{ThemeResource ChartLineBrush}" StrokeThickness="2"
+                              Data="{x:Bind ViewModel.ChartPathData, Mode=OneWay}"/>
+                        <Border Canvas.Left="16" Canvas.Top="8"
+                                Background="{ThemeResource AccentMintBgBrush}"
+                                CornerRadius="10" Padding="12,5"
+                                BorderBrush="{ThemeResource AccentMintBrush}" BorderThickness="1">
+                            <TextBlock Text="{x:Bind ViewModel.ChartTooltipText, Mode=OneWay}"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource AccentMintTextBrush}"/>
+                        </Border>
+                    </Canvas>
+
+                    <!-- Daily Activity Bar & Labels -->
+                    <ItemsControl Grid.Row="2" ItemsSource="{x:Bind ViewModel.WeeklyActivities, Mode=OneWay}" Margin="0,10,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:DailyActivityItem">
+                                <StackPanel HorizontalAlignment="Center" Spacing="4" ToolTipService.ToolTip="{x:Bind AmountText}">
+                                    <Border Width="12" Height="{x:Bind BarHeight}"
+                                            CornerRadius="6"
+                                            Background="{ThemeResource AccentPurpleBgBrush}"
+                                            VerticalAlignment="Bottom"/>
+                                    <TextBlock Text="{x:Bind DayName}"
+                                               FontSize="11"
+                                               Foreground="{ThemeResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Grid>
+
+            <!-- Row 2: Member Level & Financial Health Gauge -->
+            <Grid Grid.Row="2" Padding="40,28,40,28">
+                <Border Background="{ThemeResource SurfaceCardBrush}"
+                        BorderBrush="{ThemeResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="20"
+                        Padding="32,24">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Info -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="16">
+                            <TextBlock Text="Cấp độ tài chính cá nhân" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+
+                            <Grid Margin="0,4,0,0">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Trạng thái chi tiêu tháng" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{x:Bind ViewModel.MemberLevel, Mode=OneWay}"
+                                               FontSize="18" FontWeight="Bold"
+                                               Foreground="{ThemeResource AccentPurpleTextBrush}"/>
+                                </StackPanel>
+
+                                <StackPanel HorizontalAlignment="Right" Spacing="4">
+                                    <TextBlock Text="Đã chi / Ngân sách tháng" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                    <TextBlock FontSize="15" Margin="0,2,0,0">
+                                        <Run Text="{x:Bind ViewModel.SpentAmountText, Mode=OneWay}" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+                                        <Run Text="{x:Bind ViewModel.SpentTargetText, Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Helpful Insights Banner -->
+                            <Border Background="{ThemeResource AccentMintBgBrush}"
+                                    CornerRadius="14" Padding="20,12"
+                                    BorderBrush="{ThemeResource AccentMintBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xEB9D;" FontSize="16" Foreground="{ThemeResource AccentMintTextBrush}"/>
+                                    <TextBlock Text="Số dư và các khoản chi tiêu được cập nhật tự động thời gian thực từ cơ sở dữ liệu."
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource AccentMintTextBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Right Semi-Circle Gauge -->
+                        <Grid Grid.Column="1" Width="220" Height="130" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="32,0,0,0">
+                            <!-- Background Track Arc -->
+                            <Path Stroke="{ThemeResource GaugeTrackBrush}" StrokeThickness="22"
+                                  Data="M 20,110 A 85,85 0 0 1 190,110"/>
+                            <!-- Mint Arc (Health) -->
+                            <Path Stroke="{ThemeResource AccentMintBrush}" StrokeThickness="22"
+                                  Data="M 20,110 A 85,85 0 0 1 125,28"/>
+                            <!-- Purple Arc (Target) -->
+                            <Path Stroke="{ThemeResource AccentPurpleBrush}" StrokeThickness="22"
+                                  Data="M 129,29 A 85,85 0 0 1 190,110"/>
+
+                            <!-- Center Dial Badge -->
+                            <Border Width="60" Height="60" CornerRadius="30"
+                                    Background="{ThemeResource DialCenterBrush}"
+                                    BorderBrush="{ThemeResource BorderBrush}"
+                                    BorderThickness="4"
+                                    VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                                <Border Width="42" Height="42" CornerRadius="21" Background="{ThemeResource AccentPurpleBgBrush}">
+                                    <FontIcon Glyph="&#xEC4A;" FontSize="18" Foreground="{ThemeResource AccentPurpleTextBrush}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ==================== RIGHT ACTIVITY PANEL ==================== -->
+        <Grid Grid.Column="1" Background="{ThemeResource SurfaceAltBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="76" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Right Top Bar: Interactive Search + Real Notification Flyout (Fake Chat & User Avatar Removed) -->
+            <Border Grid.Row="0"
+                    Background="{ThemeResource SurfaceBrush}"
+                    BorderBrush="{ThemeResource BorderBrush}"
+                    BorderThickness="0,0,0,1" Padding="24,0">
+                <Grid VerticalAlignment="Center" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Real Search Box -->
+                    <TextBox Grid.Column="0"
+                             x:Name="DashboardSearchBox"
+                             Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Tìm giao dịch, danh mục, ví..."
+                             CornerRadius="10"
+                             VerticalAlignment="Center"
+                             KeyDown="OnSearchBoxKeyDown"/>
+
+                    <!-- Real Notification Button with Badge & Flyout -->
+                    <Button Grid.Column="1"
+                            Background="{ThemeResource SurfaceHighlightBrush}"
+                            BorderBrush="{ThemeResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Width="40" Height="38"
+                            Padding="0"
+                            ToolTipService.ToolTip="Thông báo tài chính">
+                        <Grid>
+                            <FontIcon Glyph="&#xEA8F;" FontSize="16" Foreground="{ThemeResource TextPrimaryBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Ellipse Width="8" Height="8"
+                                     Fill="{ThemeResource AccentMintBrush}"
+                                     HorizontalAlignment="Right" VerticalAlignment="Top"
+                                     Margin="0,6,6,0"
+                                     Visibility="{x:Bind ViewModel.UnreadBadgeVisibility, Mode=OneWay}"/>
+                        </Grid>
+
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="320" Spacing="12">
+                                    <Grid>
+                                        <TextBlock Text="Thông báo" FontSize="15" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                        <Button Command="{x:Bind ViewModel.MarkNotificationsReadCommand}"
+                                                Content="Đánh dấu đã đọc"
+                                                FontSize="11"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Foreground="{ThemeResource AccentPurpleTextBrush}"
+                                                HorizontalAlignment="Right"
+                                                Padding="6,2"/>
+                                    </Grid>
+
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.Notifications, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:NotificationItem">
+                                                <Border Background="{ThemeResource SurfaceCardBrush}"
+                                                        BorderBrush="{ThemeResource BorderLightBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        Padding="12,10"
+                                                        Margin="0,0,0,8">
+                                                    <Grid ColumnSpacing="10">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                                                                Background="{x:Bind BadgeBgBrush}" VerticalAlignment="Top">
+                                                            <FontIcon Glyph="{x:Bind Glyph}" FontSize="14"
+                                                                      Foreground="{x:Bind AccentBrush}"
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+
+                                                        <StackPanel Grid.Column="1" Spacing="2">
+                                                            <Grid>
+                                                                <TextBlock Text="{x:Bind Title}" FontSize="12" FontWeight="SemiBold"
+                                                                           Foreground="{ThemeResource TextPrimaryBrush}"
+                                                                           MaxLines="1" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{x:Bind TimeText}" FontSize="10"
+                                                                           Foreground="{ThemeResource TextSecondaryBrush}"
+                                                                           HorizontalAlignment="Right"/>
+                                                            </Grid>
+                                                            <TextBlock Text="{x:Bind Message}" FontSize="11"
+                                                                       Foreground="{ThemeResource TextSecondaryBrush}"
+                                                                       TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Limit & Activity Scroll -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="24,24,24,20" Spacing="24">
+                    <!-- Internet Limit Progress -->
+                    <Border Background="{ThemeResource SurfaceCardBrush}"
+                            BorderBrush="{ThemeResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="16" Padding="18">
+                        <StackPanel Spacing="10">
+                            <Grid>
+                                <TextBlock Text="Hạn mức chi tiêu tháng" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+                                <TextBlock FontSize="12" HorizontalAlignment="Right">
+                                    <Run Text="{x:Bind ViewModel.LimitSpentText, Mode=OneWay}" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+                                    <Run Text="{x:Bind ViewModel.LimitTargetText, Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                </TextBlock>
+                            </Grid>
+                            <ProgressBar Minimum="0" Maximum="100"
+                                         Value="{x:Bind ViewModel.LimitPercentage, Mode=OneWay}"
+                                         Height="8" CornerRadius="4"
+                                         Foreground="{ThemeResource AccentPurpleBrush}"
+                                         Background="{ThemeResource AccentPurpleBgBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Recent Activity List -->
+                    <StackPanel Spacing="14">
+                        <Grid>
+                            <TextBlock Text="Hoạt động gần đây" FontSize="15" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Items List using DataTemplate and MVVM binding -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTransactions, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:TransactionItem">
+                                    <Border Background="{ThemeResource SurfaceCardBrush}"
+                                            BorderBrush="{ThemeResource BorderLightBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="14"
+                                            Padding="14,10"
+                                            Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Badge Icon -->
+                                            <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19"
+                                                    Background="{x:Bind BadgeBgBrush}"
+                                                    Margin="0,0,12,0">
+                                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="15"
+                                                          Foreground="{x:Bind AmountBrush}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+
+                                            <!-- Text info -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Text="{x:Bind Title}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource TextPrimaryBrush}"
+                                                           MaxLines="1" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{x:Bind Subtitle}"
+                                                           FontSize="11" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+
+                                            <!-- Amount -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{x:Bind AmountText}"
+                                                       FontSize="13" FontWeight="Bold"
+                                                       Foreground="{x:Bind AmountBrush}"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Show More Button -->
+                        <Button Command="{x:Bind ViewModel.GoToTransactionsCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                HorizontalAlignment="Center" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Xem tất cả giao dịch" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AccentPurpleTextBrush}"/>
+                                <FontIcon Glyph="&#xE70D;" FontSize="10" Foreground="{ThemeResource AccentPurpleTextBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>
