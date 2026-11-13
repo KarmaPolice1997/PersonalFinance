@@ -1,5 +1,3 @@
 <Solution>
-  <Project Path="AtomFinance.Core/AtomFinance.Core.csproj" />
-  <Project Path="AtomFinance.WinUI/AtomFinance.WinUI.csproj" />
   <Project Path="PersonalFinance.csproj" />
 </Solution>
