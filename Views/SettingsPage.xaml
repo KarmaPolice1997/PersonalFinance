@@ -50,6 +50,46 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Budget & Categories Card -->
+                <Border Background="{ThemeResource SurfaceCardBrush}"
+                        BorderBrush="{ThemeResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="16" Padding="24">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Ngân sách &amp; Danh mục" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"/>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Header="Hạn mức chi tiêu tháng (VND)"
+                                     PlaceholderText="Ví dụ: 15,000,000"
+                                     Text="{x:Bind ViewModel.MonthlyBudgetText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <Button Grid.Column="1"
+                                    Command="{x:Bind ViewModel.SaveBudgetCommand}"
+                                    VerticalAlignment="Bottom"
+                                    Background="{ThemeResource TextPrimaryBrush}"
+                                    Foreground="{ThemeResource AppBackgroundBrush}"
+                                    CornerRadius="10" Padding="16,9" FontWeight="SemiBold" BorderThickness="0"
+                                    Content="Lưu hạn mức"/>
+                        </Grid>
+
+                        <Button Command="{x:Bind ViewModel.ManageCategoriesCommand}"
+                                Background="{ThemeResource AccentPurpleBgBrush}"
+                                Foreground="{ThemeResource AccentPurpleTextBrush}"
+                                CornerRadius="10" Padding="16,9" FontWeight="SemiBold" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8EC;" FontSize="13"/>
+                                <TextBlock Text="Quản lý danh mục Thu / Chi..." FontSize="13"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
                 <!-- Storage & Backup Card -->
                 <Border Background="{ThemeResource SurfaceCardBrush}"
                         BorderBrush="{ThemeResource BorderBrush}"

@@ -1,6 +1,8 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
+using AtomFinance.WinUI.Helpers;
 using AtomFinance.WinUI.Services;
 using PersonalFinance.Services;
 
@@ -8,6 +10,7 @@ namespace AtomFinance.WinUI.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
+    private const string MonthlyBudgetKey = "Monthly_Budget_Target";
     private readonly IFinanceService _financeService;
     private readonly IDialogService _dialogService;
     private readonly ThemeService _themeService;
@@ -18,6 +21,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial int SelectedThemeIndex { get; set; } = 0;
 
+    [ObservableProperty]
+    public partial string MonthlyBudgetText { get; set; } = "15,000,000";
+
     public SettingsViewModel(IFinanceService financeService, IDialogService dialogService, ThemeService themeService)
     {
         _financeService = financeService;
@@ -25,6 +31,12 @@ public partial class SettingsViewModel : ObservableObject
         _themeService = themeService;
 
         DatabasePath = _financeService.DatabasePath;
+
+        string savedBudget = _financeService.GetSetting(MonthlyBudgetKey, "15000000");
+        if (decimal.TryParse(savedBudget, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal budgetVal) && budgetVal > 0)
+        {
+            MonthlyBudgetText = budgetVal.ToString("N0", CultureInfo.InvariantCulture);
+        }
 
         SelectedThemeIndex = _themeService.CurrentTheme switch
         {
@@ -57,6 +69,27 @@ public partial class SettingsViewModel : ObservableObject
         {
             _themeService.SetTheme(theme);
         }
+    }
+
+    [RelayCommand]
+    public async Task SaveBudgetAsync()
+    {
+        if (!Formatters.TryParseCurrency(MonthlyBudgetText, out decimal amount) || amount <= 0)
+        {
+            await _dialogService.ShowMessageAsync("Lỗi dữ liệu", "Hạn mức chi tiêu tháng phải là số dương lớn hơn 0.");
+            return;
+        }
+
+        _financeService.SetSetting(MonthlyBudgetKey, amount.ToString(CultureInfo.InvariantCulture));
+        MonthlyBudgetText = amount.ToString("N0", CultureInfo.InvariantCulture);
+        _financeService.NotifyDataChanged();
+        await _dialogService.ShowMessageAsync("Đã lưu hạn mức", $"Hạn mức chi tiêu tháng mới là {Formatters.Currency(amount)}.");
+    }
+
+    [RelayCommand]
+    public async Task ManageCategoriesAsync()
+    {
+        await _dialogService.ShowManageCategoriesDialogAsync();
     }
 
     [RelayCommand]

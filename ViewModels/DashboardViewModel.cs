@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using AtomFinance.WinUI.Helpers;
 using AtomFinance.WinUI.Models;
 using PersonalFinance.Models;
@@ -12,13 +13,39 @@ namespace AtomFinance.WinUI.ViewModels;
 
 public partial class DashboardViewModel : ViewModelBase
 {
+    private const string RightPanelWidthKey = "Dashboard_RightPanelWidth";
+    private const string BalanceCardWidthKey = "Dashboard_BalanceCardWidth";
+    private const string TopSectionHeightKey = "Dashboard_TopSectionHeight";
+
+    public const double DefaultRightPanelWidth = 380;
+    public const double DefaultBalanceCardWidth = 300;
+    public const double DefaultTopSectionHeight = 252;
+
     private readonly ShellViewModel _shellViewModel;
+    private string _defaultChartTooltipText = "0 đ";
+    private double _currentPlotHeight = 116;
+
+    public event EventHandler? WeeklyActivityUpdated;
+    public event EventHandler? LayoutResetRequested;
+
+    public double RightPanelWidth { get; private set; } = DefaultRightPanelWidth;
+    public double BalanceCardWidth { get; private set; } = DefaultBalanceCardWidth;
+    public double TopSectionHeight { get; private set; } = DefaultTopSectionHeight;
 
     [ObservableProperty]
     public partial string TotalBalanceText { get; set; } = "0 đ";
 
     [ObservableProperty]
     public partial string GrowthText { get; set; } = "+0.0%";
+
+    [ObservableProperty]
+    public partial string GrowthGlyph { get; set; } = "\uE70E";
+
+    [ObservableProperty]
+    public partial Brush GrowthBadgeBrush { get; set; } = Formatters.MintBrush;
+
+    [ObservableProperty]
+    public partial Brush GrowthTextBrush { get; set; } = Formatters.MintBrush;
 
     [ObservableProperty]
     public partial string SpentAmountText { get; set; } = "0 đ";
@@ -37,9 +64,6 @@ public partial class DashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial double LimitPercentage { get; set; } = 0;
-
-    [ObservableProperty]
-    public partial string ChartPathData { get; set; } = "M 0,90 L 360,90";
 
     [ObservableProperty]
     public partial string ChartTooltipText { get; set; } = "0 đ";
@@ -63,6 +87,7 @@ public partial class DashboardViewModel : ViewModelBase
         : base(financeService)
     {
         _shellViewModel = shellViewModel;
+        LoadLayoutSettings();
         RefreshData();
     }
 
@@ -93,22 +118,35 @@ public partial class DashboardViewModel : ViewModelBase
         if (monthlyIncome > 0)
         {
             decimal netRate = (monthlyIncome - monthlyExpense) / monthlyIncome * 100m;
-            string prefix = netRate >= 0 ? "+" : "";
+            bool isPositive = netRate >= 0;
+            string prefix = isPositive ? "+" : "";
             GrowthText = $"{prefix}{netRate:0.0}% tháng này";
+            GrowthGlyph = isPositive ? "\uE70E" : "\uE70D";
+            GrowthBadgeBrush = isPositive ? Formatters.MintBrush : Formatters.RedBrush;
+            GrowthTextBrush = isPositive ? Formatters.MintBrush : Formatters.RedBrush;
         }
         else if (monthlyExpense > 0)
         {
             GrowthText = $"-{Formatters.CompactCurrency(monthlyExpense)} tháng này";
+            GrowthGlyph = "\uE70D";
+            GrowthBadgeBrush = Formatters.RedBrush;
+            GrowthTextBrush = Formatters.RedBrush;
         }
         else
         {
             GrowthText = "0.0% tháng này";
+            GrowthGlyph = "\uE70E";
+            GrowthBadgeBrush = Formatters.MintBrush;
+            GrowthTextBrush = Formatters.MintBrush;
         }
 
-        // 3. Monthly Spending & Target calculation
+        // 3. Monthly Spending & Configurable Target calculation
         decimal monthlyTarget = 15_000_000m;
-        if (monthlyExpense > monthlyTarget)
-            monthlyTarget = Math.Ceiling(monthlyExpense / 10_000_000m + 0.5m) * 10_000_000m;
+        string savedBudget = FinanceService.GetSetting("Monthly_Budget_Target", "15000000");
+        if (decimal.TryParse(savedBudget, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsedTarget) && parsedTarget > 0)
+        {
+            monthlyTarget = parsedTarget;
+        }
 
         SpentAmountText = Formatters.CompactCurrency(monthlyExpense) + " đ";
         SpentTargetText = "/ " + Formatters.CompactCurrency(monthlyTarget) + " đ";
@@ -119,7 +157,8 @@ public partial class DashboardViewModel : ViewModelBase
             < 0.25 => "Tiết kiệm xuất sắc",
             < 0.6 => "Chi tiêu hợp lý",
             < 0.85 => "Đạt mức tiêu chuẩn",
-            _ => "Cần kiểm soát chi tiêu"
+            < 1.0 => "Sắp chạm hạn mức",
+            _ => "Vượt hạn mức chi tiêu"
         };
 
         // 4. Limit Progress
@@ -159,9 +198,9 @@ public partial class DashboardViewModel : ViewModelBase
 
             var (amountBrush, badgeBgBrush, glyph) = t.Type switch
             {
-                TransactionType.Income => (Formatters.MintBrush, Formatters.MintBgBrush, ""),
-                TransactionType.Transfer => (Formatters.PurpleBrush, Formatters.PurpleBgBrush, ""),
-                _ => (Formatters.RedBrush, Formatters.RedBgBrush, "")
+                TransactionType.Income => (Formatters.MintBrush, Formatters.MintBgBrush, "\uE73E"),
+                TransactionType.Transfer => (Formatters.PurpleBrush, Formatters.PurpleBgBrush, "\uE8AB"),
+                _ => (Formatters.RedBrush, Formatters.RedBgBrush, "\uE719")
             };
 
             RecentTransactions.Add(new TransactionItem(
@@ -189,9 +228,9 @@ public partial class DashboardViewModel : ViewModelBase
             .Where(t => t.Type == TransactionType.Expense)
             .ToList();
 
-        decimal maxSpend = 1m;
+        decimal maxSpend = 0m;
         decimal weekTotal = 0m;
-        var dailySpends = new List<(DateTime Date, decimal Spend)>();
+        var dailySpends = new List<(DateTime Date, decimal Spend)>(7);
 
         foreach (var day in days)
         {
@@ -204,49 +243,115 @@ public partial class DashboardViewModel : ViewModelBase
             dailySpends.Add((day, dayTotal));
         }
 
+        double maxBarHeight = GetMaxBarHeight(_currentPlotHeight);
+
         foreach (var (date, spend) in dailySpends)
         {
-            double height = maxSpend > 0 ? (double)(spend / maxSpend * 72m) : 6.0;
-            if (height < 6) height = 6;
+            bool isToday = date.Date == today;
+            double normalized = maxSpend > 0 ? (double)(spend / maxSpend) : 0.0;
+            double height = CalculateBarHeight(normalized, maxBarHeight);
+            double opacity = spend <= 0 ? 0.16 : (isToday ? 0.58 : 0.28);
 
             WeeklyActivities.Add(new DailyActivityItem(
-                date.ToString("ddd"),
+                GetVietnameseShortDayName(date),
+                date.ToString("dd/MM"),
                 spend,
                 Formatters.Currency(spend),
-                height
+                normalized,
+                height,
+                opacity,
+                isToday
             ));
         }
 
-        // Build smooth SVG Bezier path across the 7 points (Canvas width ~360, height ~100)
-        var pts = new (double X, double Y)[dailySpends.Count];
-        for (int i = 0; i < dailySpends.Count; i++)
-        {
-            double x = i * (360.0 / 6.0);
-            double norm = maxSpend > 0 ? (double)(dailySpends[i].Spend / maxSpend) : 0.0;
-            double y = 95.0 - (norm * 70.0); // y in [25..95]
-            pts[i] = (x, y);
-        }
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendFormat(CultureInfo.InvariantCulture, "M {0:0.#},{1:0.#}", pts[0].X, pts[0].Y);
-        for (int i = 0; i < pts.Length - 1; i++)
-        {
-            double midX = (pts[i].X + pts[i + 1].X) / 2.0;
-            sb.AppendFormat(
-                CultureInfo.InvariantCulture,
-                " C {0:0.#},{1:0.#} {2:0.#},{3:0.#} {4:0.#},{5:0.#}",
-                midX, pts[i].Y,
-                midX, pts[i + 1].Y,
-                pts[i + 1].X, pts[i + 1].Y);
-        }
-        ChartPathData = sb.ToString();
-
         decimal todaySpend = dailySpends.Last().Spend;
-        ChartTooltipText = todaySpend > 0
+        _defaultChartTooltipText = todaySpend > 0
             ? $"Hôm nay: {Formatters.Currency(todaySpend)}"
             : $"7 ngày: {Formatters.Currency(weekTotal)}";
+        ChartTooltipText = _defaultChartTooltipText;
 
+        WeeklyActivityUpdated?.Invoke(this, EventArgs.Empty);
         return weekTotal;
+    }
+
+    public void UpdateChartPlotHeight(double plotHeight)
+    {
+        if (plotHeight <= 0)
+            return;
+
+        _currentPlotHeight = plotHeight;
+        double maxBarHeight = GetMaxBarHeight(plotHeight);
+        foreach (var item in WeeklyActivities)
+        {
+            item.BarHeight = CalculateBarHeight(item.NormalizedValue, maxBarHeight);
+        }
+    }
+
+    public void SetHoveredDay(DailyActivityItem? item)
+    {
+        ChartTooltipText = item is null
+            ? _defaultChartTooltipText
+            : $"{item.DayName} ({item.FullDateLabel}): {item.AmountText}";
+    }
+
+    private static double GetMaxBarHeight(double plotHeight) =>
+        Math.Max(32.0, plotHeight - 28.0);
+
+    private static double CalculateBarHeight(double normalizedValue, double maxBarHeight) =>
+        normalizedValue <= 0 ? 4.0 : Math.Max(8.0, normalizedValue * maxBarHeight);
+
+    private static string GetVietnameseShortDayName(DateTime date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Monday => "T2",
+        DayOfWeek.Tuesday => "T3",
+        DayOfWeek.Wednesday => "T4",
+        DayOfWeek.Thursday => "T5",
+        DayOfWeek.Friday => "T6",
+        DayOfWeek.Saturday => "T7",
+        DayOfWeek.Sunday => "CN",
+        _ => date.ToString("ddd", CultureInfo.InvariantCulture)
+    };
+
+    private void LoadLayoutSettings()
+    {
+        RightPanelWidth = LoadClampedSetting(RightPanelWidthKey, DefaultRightPanelWidth, 280, 560);
+        BalanceCardWidth = LoadClampedSetting(BalanceCardWidthKey, DefaultBalanceCardWidth, 230, 440);
+        TopSectionHeight = LoadClampedSetting(TopSectionHeightKey, DefaultTopSectionHeight, 210, 380);
+    }
+
+    private double LoadClampedSetting(string key, double fallback, double min, double max)
+    {
+        string raw = FinanceService.GetSetting(key, string.Empty);
+        if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+            return Math.Clamp(value, min, max);
+        return fallback;
+    }
+
+    public void SaveRightPanelWidth(double width)
+    {
+        RightPanelWidth = Math.Clamp(width, 280, 560);
+        FinanceService.SetSetting(RightPanelWidthKey, RightPanelWidth.ToString("0.#", CultureInfo.InvariantCulture));
+    }
+
+    public void SaveBalanceCardWidth(double width)
+    {
+        BalanceCardWidth = Math.Clamp(width, 230, 440);
+        FinanceService.SetSetting(BalanceCardWidthKey, BalanceCardWidth.ToString("0.#", CultureInfo.InvariantCulture));
+    }
+
+    public void SaveTopSectionHeight(double height)
+    {
+        TopSectionHeight = Math.Clamp(height, 210, 380);
+        FinanceService.SetSetting(TopSectionHeightKey, TopSectionHeight.ToString("0.#", CultureInfo.InvariantCulture));
+    }
+
+    [RelayCommand]
+    public void ResetLayout()
+    {
+        SaveRightPanelWidth(DefaultRightPanelWidth);
+        SaveBalanceCardWidth(DefaultBalanceCardWidth);
+        SaveTopSectionHeight(DefaultTopSectionHeight);
+        LayoutResetRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void BuildNotifications(decimal monthlyExpense, decimal monthlyTarget, double ratio, decimal weekTotal)
@@ -260,7 +365,7 @@ public partial class DashboardViewModel : ViewModelBase
                 "Cảnh báo hạn mức chi tiêu",
                 $"Bạn đã chi {Formatters.Currency(monthlyExpense)} ({ratio * 100:0.#}% hạn mức tháng).",
                 "Tháng này",
-                "",
+                "\uE7BA",
                 Formatters.RedBrush,
                 Formatters.RedBgBrush
             ));
@@ -271,7 +376,7 @@ public partial class DashboardViewModel : ViewModelBase
                 "Ngân sách trong tầm kiểm soát",
                 $"Đã chi {Formatters.Currency(monthlyExpense)} / {Formatters.Currency(monthlyTarget)} ({ratio * 100:0.#}%).",
                 "Tháng này",
-                "",
+                "\uE73E",
                 Formatters.MintBrush,
                 Formatters.MintBgBrush
             ));
@@ -285,7 +390,7 @@ public partial class DashboardViewModel : ViewModelBase
                 $"Số dư thấp: {acc.Name}",
                 $"Số dư hiện tại chỉ còn {Formatters.Currency(acc.CurrentBalance, acc.Currency)}.",
                 "Ví & Tài khoản",
-                "",
+                "\uE7BA",
                 Formatters.YellowBrush,
                 Formatters.YellowBgBrush
             ));
@@ -296,7 +401,7 @@ public partial class DashboardViewModel : ViewModelBase
             "Tổng kết 7 ngày qua",
             $"Tổng chi tiêu 7 ngày gần nhất: {Formatters.Currency(weekTotal)}.",
             "7 ngày qua",
-            "",
+            "\uE9D2",
             Formatters.PurpleBrush,
             Formatters.PurpleBgBrush
         ));
@@ -305,14 +410,23 @@ public partial class DashboardViewModel : ViewModelBase
         var latestTx = FinanceService.GetTransactions().FirstOrDefault();
         if (latestTx != null)
         {
-            string sign = latestTx.Type == TransactionType.Income ? "+" : "-";
+            string sign = latestTx.Type == TransactionType.Income
+                ? "+"
+                : (latestTx.Type == TransactionType.Expense ? "-" : "");
+            var (txAccent, txBg, txGlyph) = latestTx.Type switch
+            {
+                TransactionType.Income => (Formatters.MintBrush, Formatters.MintBgBrush, "\uE73E"),
+                TransactionType.Transfer => (Formatters.PurpleBrush, Formatters.PurpleBgBrush, "\uE8AB"),
+                _ => (Formatters.RedBrush, Formatters.RedBgBrush, "\uE719")
+            };
+
             Notifications.Add(new NotificationItem(
                 string.IsNullOrWhiteSpace(latestTx.Note) ? "Giao dịch mới nhất" : latestTx.Note,
                 $"{sign}{Formatters.Currency(latestTx.Amount)}",
                 Formatters.RelativeDate(latestTx.TransactionDate),
-                "",
-                Formatters.MintBrush,
-                Formatters.MintBgBrush
+                txGlyph,
+                txAccent,
+                txBg
             ));
         }
 

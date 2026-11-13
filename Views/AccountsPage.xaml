@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:AtomFinance.WinUI.Models"
+    xmlns:controls="using:AtomFinance.WinUI.Controls"
     NavigationCacheMode="Required"
     mc:Ignorable="d"
     Background="{ThemeResource AppBackgroundBrush}">
@@ -39,14 +40,14 @@
             <ItemsControl ItemsSource="{x:Bind ViewModel.Accounts, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="340" ItemHeight="190" MaximumRowsOrColumns="4"/>
+                        <controls:WrapPanel HorizontalSpacing="16" VerticalSpacing="16"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:AccountItem">
-                        <Border CornerRadius="18"
+                        <Border Width="320" Height="174"
+                                CornerRadius="18"
                                 Padding="20,16"
-                                Margin="0,0,16,16"
                                 Background="{ThemeResource SurfaceCardBrush}"
                                 BorderBrush="{ThemeResource BorderBrush}"
                                 BorderThickness="1.5">
@@ -57,19 +58,34 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Header: Name & Delete -->
+                                <!-- Header: Name, Edit & Delete -->
                                 <Grid Grid.Row="0">
-                                    <TextBlock Text="{x:Bind Name}"
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{x:Bind Name}"
                                                FontSize="15" FontWeight="Bold"
                                                Foreground="{ThemeResource TextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"/>
-                                    <Button Click="OnDeleteClicked"
-                                            Tag="{x:Bind Id}"
-                                            Background="Transparent" BorderThickness="0"
-                                            HorizontalAlignment="Right" Padding="4"
-                                            ToolTipService.ToolTip="Xóa thẻ / tài khoản">
-                                        <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}"/>
-                                    </Button>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                        <Button Click="OnEditClicked"
+                                                Tag="{x:Bind Id}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="4"
+                                                ToolTipService.ToolTip="Sửa tài khoản">
+                                            <FontIcon Glyph="&#xE70F;" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                        </Button>
+                                        <Button Click="OnDeleteClicked"
+                                                Tag="{x:Bind Id}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="4"
+                                                ToolTipService.ToolTip="Xóa thẻ / tài khoản">
+                                            <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}"/>
+                                        </Button>
+                                    </StackPanel>
                                 </Grid>
 
                                 <!-- Balance & Description -->

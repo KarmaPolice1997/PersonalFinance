@@ -13,6 +13,7 @@ public partial class TransactionsViewModel : ViewModelBase
 {
     private readonly IDialogService _dialogService;
     private readonly ShellViewModel _shellViewModel;
+    private bool _isRefreshingFilters;
 
     [ObservableProperty]
     public partial TransactionType? CurrentTypeFilter { get; set; }
@@ -22,6 +23,12 @@ public partial class TransactionsViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string FilterSummaryText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial int SelectedAccountFilterIndex { get; set; } = 0;
+
+    [ObservableProperty]
+    public partial int SelectedCategoryFilterIndex { get; set; } = 0;
 
     [ObservableProperty]
     public partial double AllFilterOpacity { get; set; } = 1.0;
@@ -36,6 +43,8 @@ public partial class TransactionsViewModel : ViewModelBase
     public partial double TransferFilterOpacity { get; set; } = 0.55;
 
     public ObservableCollection<TransactionItem> Transactions { get; } = new();
+    public ObservableCollection<Account> FilterAccounts { get; } = new();
+    public ObservableCollection<Category> FilterCategories { get; } = new();
 
     public TransactionsViewModel(IFinanceService financeService, IDialogService dialogService, ShellViewModel shellViewModel)
         : base(financeService)
@@ -53,6 +62,8 @@ public partial class TransactionsViewModel : ViewModelBase
             }
         };
 
+        LoadFilterOptions();
+
         if (!string.IsNullOrEmpty(_shellViewModel.PendingSearchQuery))
         {
             SearchText = _shellViewModel.PendingSearchQuery;
@@ -66,12 +77,25 @@ public partial class TransactionsViewModel : ViewModelBase
 
     protected override void OnDataRefreshed()
     {
+        LoadFilterOptions();
         RefreshTransactions();
     }
 
     partial void OnSearchTextChanged(string value)
     {
         RefreshTransactions();
+    }
+
+    partial void OnSelectedAccountFilterIndexChanged(int value)
+    {
+        if (!_isRefreshingFilters)
+            RefreshTransactions();
+    }
+
+    partial void OnSelectedCategoryFilterIndexChanged(int value)
+    {
+        if (!_isRefreshingFilters)
+            RefreshTransactions();
     }
 
     partial void OnCurrentTypeFilterChanged(TransactionType? value)
@@ -82,6 +106,48 @@ public partial class TransactionsViewModel : ViewModelBase
         TransferFilterOpacity = value == TransactionType.Transfer ? 1.0 : 0.55;
 
         RefreshTransactions();
+    }
+
+    private void LoadFilterOptions()
+    {
+        _isRefreshingFilters = true;
+        try
+        {
+            string? selectedAccId = SelectedAccountFilterIndex > 0 && SelectedAccountFilterIndex < FilterAccounts.Count
+                ? FilterAccounts[SelectedAccountFilterIndex].Id
+                : null;
+            string? selectedCatId = SelectedCategoryFilterIndex > 0 && SelectedCategoryFilterIndex < FilterCategories.Count
+                ? FilterCategories[SelectedCategoryFilterIndex].Id
+                : null;
+
+            FilterAccounts.Clear();
+            FilterAccounts.Add(new Account { Id = string.Empty, Name = "Tất cả ví" });
+            foreach (var acc in FinanceService.GetAllAccounts())
+            {
+                FilterAccounts.Add(acc);
+            }
+
+            FilterCategories.Clear();
+            FilterCategories.Add(new Category { Id = string.Empty, Name = "Tất cả danh mục" });
+            foreach (var cat in FinanceService.GetAllCategories())
+            {
+                FilterCategories.Add(cat);
+            }
+
+            int accIdx = selectedAccId != null
+                ? FilterAccounts.ToList().FindIndex(a => a.Id == selectedAccId)
+                : 0;
+            SelectedAccountFilterIndex = accIdx >= 0 ? accIdx : 0;
+
+            int catIdx = selectedCatId != null
+                ? FilterCategories.ToList().FindIndex(c => c.Id == selectedCatId)
+                : 0;
+            SelectedCategoryFilterIndex = catIdx >= 0 ? catIdx : 0;
+        }
+        finally
+        {
+            _isRefreshingFilters = false;
+        }
     }
 
     [RelayCommand]
@@ -103,6 +169,21 @@ public partial class TransactionsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public async Task EditTransactionAsync(string id)
+    {
+        var item = Transactions.FirstOrDefault(t => t.Id == id);
+        if (item == null) return;
+
+        await _dialogService.ShowEditTransactionDialogAsync(item.RawTransaction);
+    }
+
+    [RelayCommand]
+    public async Task ManageCategoriesAsync()
+    {
+        await _dialogService.ShowManageCategoriesDialogAsync();
+    }
+
+    [RelayCommand]
     public async Task DeleteTransactionAsync(string id)
     {
         bool confirm = await _dialogService.ShowConfirmAsync("Xác nhận xóa", "Bạn có chắc chắn muốn xóa giao dịch này không?");
@@ -119,7 +200,16 @@ public partial class TransactionsViewModel : ViewModelBase
         var categories = FinanceService.GetAllCategories().ToDictionary(c => c.Id, c => c.Name);
         var accounts = FinanceService.GetAllAccounts().ToDictionary(a => a.Id, a => a.Name);
 
+        string? accountFilterId = SelectedAccountFilterIndex > 0 && SelectedAccountFilterIndex < FilterAccounts.Count
+            ? FilterAccounts[SelectedAccountFilterIndex].Id
+            : null;
+        string? categoryFilterId = SelectedCategoryFilterIndex > 0 && SelectedCategoryFilterIndex < FilterCategories.Count
+            ? FilterCategories[SelectedCategoryFilterIndex].Id
+            : null;
+
         var list = FinanceService.GetTransactions(
+            accountId: string.IsNullOrEmpty(accountFilterId) ? null : accountFilterId,
+            categoryId: string.IsNullOrEmpty(categoryFilterId) ? null : categoryFilterId,
             type: CurrentTypeFilter,
             keyword: string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim()
         );
@@ -154,9 +244,9 @@ public partial class TransactionsViewModel : ViewModelBase
 
             var (amountBrush, badgeBgBrush, glyph) = t.Type switch
             {
-                TransactionType.Income => (Formatters.MintBrush, Formatters.MintBgBrush, ""),
-                TransactionType.Transfer => (Formatters.PurpleBrush, Formatters.PurpleBgBrush, ""),
-                _ => (Formatters.RedBrush, Formatters.RedBgBrush, "")
+                TransactionType.Income => (Formatters.MintBrush, Formatters.MintBgBrush, "\uE73E"),
+                TransactionType.Transfer => (Formatters.PurpleBrush, Formatters.PurpleBgBrush, "\uE8AB"),
+                _ => (Formatters.RedBrush, Formatters.RedBgBrush, "\uE719")
             };
 
             Transactions.Add(new TransactionItem(

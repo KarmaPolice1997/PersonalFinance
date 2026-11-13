@@ -1,67 +1,78 @@
-# Quản Lý Tài Chính Cá Nhân (WinForms SQLite UML)
+# Atom Finance — Quản Lý Tài Chính Cá Nhân (WinUI 3 & Native SQLite)
 
-Phần mềm Quản Lý Tài Chính Cá Nhân với giao diện cơ bản, chuẩn mực Windows Forms, không màu mè, không lệch tỷ lệ, hỗ trợ 100% Tiếng Việt có dấu, lưu trữ cơ sở dữ liệu SQLite và hỗ trợ tính năng Sao lưu / Phục hồi (Backup & Restore).
+Ứng dụng Quản Lý Tài Chính Cá Nhân viết bằng **C# / WinUI 3 (Windows App SDK)** kết hợp kiến trúc **MVVM (`CommunityToolkit.Mvvm`)** và cơ sở dữ liệu **SQLite native (`winsqlite3.dll`)** không cần cài đặt phụ thuộc bên ngoài.
 
 ---
 
 ## 1. Điểm Nổi Bật
 
-* **Giao diện chuẩn mực Windows Forms:** Sử dụng `TabControl` tiêu chuẩn và các `GroupBox` chia khối mạch lạc, không lệch khung hình, tương thích tốt với mọi độ phân giải.
-* **Hỗ trợ 3 chế độ hiển thị (Dark / White / Device):** Chuyển đổi linh hoạt giữa giao diện Tối (Đen), Sáng (Trắng) và Theo thiết bị (tự động đồng bộ theo Windows), hỗ trợ tiêu đề cửa sổ DWM Native Dark.
-* **Không màu mè, không gradient, không emoji:** Màu sắc cơ bản, nhã nhặn, chuyên nghiệp theo chuẩn ứng dụng quản trị văn phòng.
-* **100% Tiếng Việt có dấu:** Toàn bộ bảng biểu, tiêu đề, nút bấm, thông báo đều sử dụng tiếng Việt tự nhiên, chuẩn mực.
-* **Font Segoe UI chuẩn hóa:** Toàn bộ thành phần giao diện chỉ sử dụng font `Segoe UI`.
-* **Cơ sở dữ liệu SQLite thực thụ:** Sử dụng tệp tin CSDL `personal_finance.db`, có thể mở và kiểm tra trực tiếp bằng *DB Browser for SQLite*.
-* **Sao lưu & Phục hồi (Backup & Restore):** Sao lưu toàn bộ dữ liệu ra tệp `.db` riêng và khôi phục dữ liệu nhanh chóng chỉ với 1 cú nhấp chuột.
-* **Tối giản mã nguồn & Không phụ thuộc bên ngoài:** Tận dụng SQLite engine native có sẵn trên Windows (`winsqlite3.dll`), biên dịch ngay lập tức mà không cần tải gói NuGet nặng nề.
+* **Giao diện WinUI 3 hiện đại (Mica Backdrop):** Hỗ trợ 3 chế độ hiển thị **Theo hệ thống Windows / Sáng (Light) / Tối (Dark)**, chuyển trang tức thì không giật lag và đồng bộ theme trên cả `ContentDialog`.
+* **Biểu đồ tương tác 7 ngày & Đồng hồ ngân sách động:** Biểu đồ đường cong Cubic Bézier kết hợp cột chi tiêu 7 ngày gần nhất, hiển thị chi tiết khi rê chuột và đồng hồ bán nguyệt phản ánh tỷ lệ chi tiêu so với hạn mức tháng.
+* **Bố cục chia khung linh hoạt (`PaneSplitter`):** Kéo thả để thay đổi kích thước bảng phải, thẻ số dư và khu vực biểu đồ; double-click để đặt lại và tự động lưu cấu hình vào SQLite.
+* **Quản lý đầy đủ Thu / Chi / Chuyển khoản / Ví / Danh mục:**
+  * Thêm, sửa, xóa giao dịch kèm chọn ngày (`CalendarDatePicker`).
+  * Lọc giao dịch theo loại (Tất cả / Chi tiêu / Thu nhập / Chuyển khoản), theo ví, theo danh mục và tìm kiếm theo từ khóa.
+  * Thêm, sửa, xóa ví / tài khoản và quản lý danh mục Thu / Chi.
+  * Tùy chỉnh hạn mức chi tiêu tháng trong Cài đặt.
+* **Động cơ SQLite Native (`winsqlite3.dll`):** Sử dụng các câu lệnh chuẩn bị sẵn (prepared statements), tự động tính lại số dư theo trình tự thời gian trong transaction, lưu dữ liệu an toàn tại `%LocalAppData%\AtomFinance\personal_finance.db`.
+* **Sao lưu & Phục hồi có kiểm tra toàn vẹn:** Hỗ trợ sao lưu ra tệp `.db` và kiểm tra định dạng SQLite + cấu trúc bảng trước khi phục hồi.
 
 ---
 
 ## 2. Cấu Trúc Mã Nguồn
 
-```
+```text
 PersonalFinance/
-├── Models/                     # Lớp Thực Thể (Domain Layer)
-│   ├── Enums.cs                # TransactionType, AccountType
-│   ├── Account.cs              # Thực thể Ví & Tài khoản ngân hàng
-│   ├── Category.cs             # Thực thể Danh mục Thu/Chi
-│   ├── Transaction.cs          # Thực thể Giao dịch tài chính
-│   └── FinancialSummary.cs     # Đối tượng tổng hợp số liệu thống kê
-├── Data/                       # Lớp Cơ Sở Dữ Liệu SQLite
-│   └── SqliteDatabase.cs       # Động cơ SQLite native, CRUD, tính toán số dư, Settings, Backup/Restore
-├── Services/                   # Lớp Nghiệp Vụ
-│   ├── IFinanceService.cs      # Interface định nghĩa toàn bộ nghiệp vụ
-│   └── FinanceService.cs       # Cầu nối giữa UI và CSDL, xử lý logic & sự kiện
-├── UI/                         # Lớp Giao Diện Trực Quan (WinForms)
-│   ├── Theme.cs                # Quản lý giao diện Dark/Light/Device, font Segoe UI, DWM titlebar
-│   ├── MainForm.cs             # Cửa sổ chính với TabControl (6 Tab chức năng)
-│   └── Dialogs/                # Hộp thoại nhập liệu chuẩn Windows
-│       ├── TransactionDialog.cs# Thêm / sửa giao dịch
-│       ├── AccountDialog.cs    # Thêm / sửa ví tài khoản
-│       ├── CategoryDialog.cs   # Thêm / sửa danh mục
-│       └── TransferDialog.cs   # Chuyển tiền giữa các ví
-├── Program.cs                  # Điểm khởi chạy ứng dụng
-└── personal_finance.db         # Tệp cơ sở dữ liệu SQLite (tự động tạo)
+├── App.xaml / App.xaml.cs          # Khởi tạo ứng dụng, services và MainWindow
+├── MainWindow.xaml(.cs)            # Shell chính với thanh điều hướng bên trái & Frame
+├── Controls/
+│   ├── EqualColumnsPanel.cs        # Panel chia cột đều cho biểu đồ 7 ngày
+│   ├── PaneSplitter.cs             # Thanh chia khung kéo thả + lưu kích thước
+│   └── WrapPanel.cs                # Panel tự động xuống dòng cho danh sách thẻ/ví
+├── Data/
+│   └── SqliteDatabase.cs           # P/Invoke winsqlite3.dll, CRUD, tính số dư, Backup/Restore
+├── Helpers/
+│   └── Formatters.cs               # Định dạng tiền tệ VND/USD, ngày tương đối, phân tích số tiền
+├── Models/
+│   ├── Account.cs                  # Thực thể Ví & Tài khoản
+│   ├── Category.cs                 # Thực thể Danh mục Thu/Chi
+│   ├── Transaction.cs              # Thực thể Giao dịch tài chính
+│   ├── FinancialSummary.cs         # Tổng hợp tài sản, thu nhập, chi tiêu
+│   ├── DisplayModels.cs            # Model hiển thị UI (TransactionItem, AccountItem...)
+│   └── Enums.cs                    # TransactionType, AccountType
+├── Services/
+│   ├── IFinanceService.cs          # Interface nghiệp vụ tài chính
+│   ├── FinanceService.cs           # Xử lý nghiệp vụ, lọc, thống kê & sự kiện DataChanged
+│   ├── IDialogService.cs           # Interface hộp thoại & FilePicker
+│   ├── DialogService.cs            # ContentDialog (Thêm/Sửa giao dịch, ví, danh mục) & Picker
+│   └── ThemeService.cs             # Quản lý và lưu trữ chế độ giao diện
+├── Themes/
+│   └── Colors.xaml                 # Bảng màu Dark (Default) & Light
+├── ViewModels/
+│   ├── ViewModelBase.cs            # Tự động đồng bộ dữ liệu qua DataChanged & DispatcherQueue
+│   ├── ShellViewModel.cs           # Điều hướng trang & tìm kiếm chuyển tiếp
+│   ├── DashboardViewModel.cs       # Số liệu tổng quan, biểu đồ 7 ngày, thông báo & bố cục
+│   ├── TransactionsViewModel.cs    # Sổ giao dịch, bộ lọc & CRUD giao dịch
+│   ├── AccountsViewModel.cs        # Quản lý ví / thẻ & tổng tài sản
+│   └── SettingsViewModel.cs        # Giao diện, hạn mức tháng, danh mục & sao lưu/phục hồi
+└── Views/
+    ├── DashboardPage.xaml(.cs)     # Trang Tổng quan
+    ├── TransactionsPage.xaml(.cs)  # Trang Sổ giao dịch (ListView ảo hóa)
+    ├── AccountsPage.xaml(.cs)      # Trang Ví & Tài khoản
+    └── SettingsPage.xaml(.cs)      # Trang Cài đặt & Dữ liệu
 ```
 
 ---
 
-## 3. Các Chức Năng Chính (6 Tab Chức Năng)
+## 3. Yêu Cầu & Cách Chạy Ứng Dụng
 
-1. **Tổng quan:** Xem 4 thông số cốt lõi (Tổng tài sản khả dụng, Tổng thu nhập, Tổng chi tiêu, Tiết kiệm thuần), thao tác nhanh và bảng các giao dịch gần đây.
-2. **Sổ giao dịch:** Quản lý toàn bộ giao dịch, hỗ trợ bộ lọc kết hợp theo ngày, loại thu/chi, ví và tìm kiếm theo ghi chú.
-3. **Tài khoản & Ví:** Quản lý ví tiền mặt, tài khoản ngân hàng, thẻ tín dụng, ví điện tử, sổ tiết kiệm; hỗ trợ chuyển tiền nội bộ giữa các ví.
-4. **Danh mục:** Quản lý danh mục chi tiêu và thu nhập.
-5. **Báo cáo & Thống kê:** Báo cáo tỷ lệ tiết kiệm (%), bảng chi tiêu theo danh mục (%) và bảng phân bổ số dư trên từng ví.
-6. **Cài đặt & Sao lưu:** Tùy chọn 3 chế độ giao diện (Theo thiết bị / Sáng / Tối), xem vị trí/dung lượng CSDL SQLite hiện tại, thực hiện sao lưu tệp `.db` và khôi phục khi cần.
-
----
-
-## 4. Cách Chạy Ứng Dụng
-
-Yêu cầu máy tính đã cài .NET SDK (hỗ trợ .NET 8 / 10).
+* **Hệ điều hành:** Windows 10 (1809+) / Windows 11
+* **SDK:** .NET SDK hỗ trợ `net11.0-windows10.0.26100.0` và Windows App SDK
 
 ```powershell
-# Chạy ứng dụng trực tiếp từ Terminal
-dotnet run
+# Biên dịch dự án
+dotnet build PersonalFinance.csproj
+
+# Chạy ứng dụng
+dotnet run --project PersonalFinance.csproj
 ```

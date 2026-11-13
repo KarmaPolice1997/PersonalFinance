@@ -44,4 +44,5 @@ public interface IFinanceService
     // Cài đặt ứng dụng
     string GetSetting(string key, string defaultValue = "");
     void SetSetting(string key, string value);
+    void NotifyDataChanged();
 }

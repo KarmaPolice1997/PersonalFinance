@@ -17,6 +17,14 @@ public sealed partial class AccountsPage : Page
         ViewModel = new AccountsViewModel(App.FinanceService, App.DialogService);
     }
 
+    private async void OnEditClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string id)
+        {
+            await ViewModel.EditAccountAsync(id);
+        }
+    }
+
     private async void OnDeleteClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string id)

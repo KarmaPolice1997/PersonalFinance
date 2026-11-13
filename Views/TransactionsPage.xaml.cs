@@ -17,6 +17,14 @@ public sealed partial class TransactionsPage : Page
         ViewModel = new TransactionsViewModel(App.FinanceService, App.DialogService, App.ShellViewModel);
     }
 
+    private async void OnEditClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string id)
+        {
+            await ViewModel.EditTransactionAsync(id);
+        }
+    }
+
     private async void OnDeleteClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string id)

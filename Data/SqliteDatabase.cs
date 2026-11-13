@@ -63,7 +63,34 @@ public class SqliteDatabase : IDisposable
 
     public SqliteDatabase(string? dbPath = null)
     {
-        _dbPath = dbPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "personal_finance.db");
+        if (dbPath != null)
+        {
+            _dbPath = dbPath;
+        }
+        else
+        {
+            string appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AtomFinance");
+            Directory.CreateDirectory(appDataDir);
+
+            string defaultDbPath = Path.Combine(appDataDir, "personal_finance.db");
+            string legacyDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "personal_finance.db");
+            if (!File.Exists(defaultDbPath) && File.Exists(legacyDbPath))
+            {
+                try
+                {
+                    File.Copy(legacyDbPath, defaultDbPath, overwrite: false);
+                }
+                catch
+                {
+                    // Ignore migration copy failure if destination was created concurrently or source is inaccessible
+                }
+            }
+
+            _dbPath = defaultDbPath;
+        }
+
         Open();
         InitializeSchema();
         SeedIfEmpty();
@@ -93,6 +120,15 @@ public class SqliteDatabase : IDisposable
         if (_db == IntPtr.Zero) return "Co so du lieu chua duoc khoi tao.";
         var ptr = sqlite3_errmsg16(_db);
         return Marshal.PtrToStringUni(ptr) ?? "Loi khong xac dinh";
+    }
+
+    private void StepOrThrow(IntPtr stmt)
+    {
+        int rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE && rc != SQLITE_ROW)
+        {
+            throw new InvalidOperationException($"Lỗi thực thi SQLite (mã {rc}): {GetLastErrorMessage()}");
+        }
     }
 
     public void ExecuteNonQuery(string sql)
@@ -181,11 +217,11 @@ public class SqliteDatabase : IDisposable
 
         // Seed transactions
         DateTime today = DateTime.Today;
-        InsertTransaction(new Transaction { Id = "tx_1", TransactionDate = today.AddDays(-5), Amount = 20000000, Type = TransactionType.Income, CategoryId = "cat_salary", SourceAccountId = "acc_bank", Note = "Lương công ty" });
-        InsertTransaction(new Transaction { Id = "tx_2", TransactionDate = today.AddDays(-4), Amount = 4500000, Type = TransactionType.Expense, CategoryId = "cat_rent", SourceAccountId = "acc_bank", Note = "Tiền nhà tháng" });
-        InsertTransaction(new Transaction { Id = "tx_3", TransactionDate = today.AddDays(-3), Amount = 1000000, Type = TransactionType.Transfer, SourceAccountId = "acc_bank", DestinationAccountId = "acc_cash", Note = "Rút tiền mặt chi tiêu" });
-        InsertTransaction(new Transaction { Id = "tx_4", TransactionDate = today.AddDays(-2), Amount = 250000, Type = TransactionType.Expense, CategoryId = "cat_food", SourceAccountId = "acc_cash", Note = "Ăn trưa bạn bè" });
-        InsertTransaction(new Transaction { Id = "tx_5", TransactionDate = today.AddDays(-1), Amount = 80000, Type = TransactionType.Expense, CategoryId = "cat_trans", SourceAccountId = "acc_cash", Note = "Đổ xăng xe máy" });
+        InsertTransaction(new Transaction { Id = "tx_1", TransactionDate = today.AddDays(-5), Amount = 20000000, Type = TransactionType.Income, CategoryId = "cat_salary", SourceAccountId = "acc_bank", Note = "Lương công ty" }, recalculate: false);
+        InsertTransaction(new Transaction { Id = "tx_2", TransactionDate = today.AddDays(-4), Amount = 4500000, Type = TransactionType.Expense, CategoryId = "cat_rent", SourceAccountId = "acc_bank", Note = "Tiền nhà tháng" }, recalculate: false);
+        InsertTransaction(new Transaction { Id = "tx_3", TransactionDate = today.AddDays(-3), Amount = 1000000, Type = TransactionType.Transfer, SourceAccountId = "acc_bank", DestinationAccountId = "acc_cash", Note = "Rút tiền mặt chi tiêu" }, recalculate: false);
+        InsertTransaction(new Transaction { Id = "tx_4", TransactionDate = today.AddDays(-2), Amount = 250000, Type = TransactionType.Expense, CategoryId = "cat_food", SourceAccountId = "acc_cash", Note = "Ăn trưa bạn bè" }, recalculate: false);
+        InsertTransaction(new Transaction { Id = "tx_5", TransactionDate = today.AddDays(-1), Amount = 80000, Type = TransactionType.Expense, CategoryId = "cat_trans", SourceAccountId = "acc_cash", Note = "Đổ xăng xe máy" }, recalculate: false);
 
         RecalculateBalances();
     }
@@ -238,7 +274,7 @@ public class SqliteDatabase : IDisposable
             sqlite3_bind_double(stmt, 5, (double)a.CurrentBalance);
             sqlite3_bind_text16(stmt, 6, a.Currency, -1, IntPtr.Zero);
             sqlite3_bind_text16(stmt, 7, a.Description, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -249,7 +285,7 @@ public class SqliteDatabase : IDisposable
     public void UpdateAccount(Account a)
     {
         Open();
-        string sql = "UPDATE accounts SET name = ?, type = ?, description = ? WHERE id = ?;";
+        string sql = "UPDATE accounts SET name = ?, type = ?, initial_balance = ?, currency = ?, description = ? WHERE id = ?;";
         int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
         if (rc != SQLITE_OK) throw new InvalidOperationException(GetLastErrorMessage());
 
@@ -257,9 +293,11 @@ public class SqliteDatabase : IDisposable
         {
             sqlite3_bind_text16(stmt, 1, a.Name, -1, IntPtr.Zero);
             sqlite3_bind_int(stmt, 2, (int)a.Type);
-            sqlite3_bind_text16(stmt, 3, a.Description, -1, IntPtr.Zero);
-            sqlite3_bind_text16(stmt, 4, a.Id, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            sqlite3_bind_double(stmt, 3, (double)a.InitialBalance);
+            sqlite3_bind_text16(stmt, 4, a.Currency, -1, IntPtr.Zero);
+            sqlite3_bind_text16(stmt, 5, a.Description, -1, IntPtr.Zero);
+            sqlite3_bind_text16(stmt, 6, a.Id, -1, IntPtr.Zero);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -270,12 +308,28 @@ public class SqliteDatabase : IDisposable
     public bool DeleteAccount(string id, out string error)
     {
         Open();
-        // Check if transactions exist
-        var txs = GetTransactions().Where(t => t.SourceAccountId == id || t.DestinationAccountId == id).ToList();
-        if (txs.Count > 0)
+        // Check if transactions exist using lightweight LIMIT 1 query
+        const string checkSql = "SELECT 1 FROM transactions WHERE source_account_id = ? OR dest_account_id = ? LIMIT 1;";
+        int checkRc = sqlite3_prepare16_v2(_db, checkSql, -1, out var checkStmt, IntPtr.Zero);
+        if (checkRc != SQLITE_OK)
         {
-            error = "Không thể xóa tài khoản/ví đang có giao dịch phát sinh. Hãy xóa các giao dịch liên quan trước.";
+            error = GetLastErrorMessage();
             return false;
+        }
+
+        try
+        {
+            sqlite3_bind_text16(checkStmt, 1, id, -1, IntPtr.Zero);
+            sqlite3_bind_text16(checkStmt, 2, id, -1, IntPtr.Zero);
+            if (sqlite3_step(checkStmt) == SQLITE_ROW)
+            {
+                error = "Không thể xóa tài khoản/ví đang có giao dịch phát sinh. Hãy xóa các giao dịch liên quan trước.";
+                return false;
+            }
+        }
+        finally
+        {
+            sqlite3_finalize(checkStmt);
         }
 
         string sql = "DELETE FROM accounts WHERE id = ?;";
@@ -289,7 +343,7 @@ public class SqliteDatabase : IDisposable
         try
         {
             sqlite3_bind_text16(stmt, 1, id, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
             error = string.Empty;
             return true;
         }
@@ -350,7 +404,7 @@ public class SqliteDatabase : IDisposable
             sqlite3_bind_text16(stmt, 2, c.Name, -1, IntPtr.Zero);
             sqlite3_bind_int(stmt, 3, (int)c.Type);
             sqlite3_bind_text16(stmt, 4, c.Description, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -371,7 +425,7 @@ public class SqliteDatabase : IDisposable
             sqlite3_bind_int(stmt, 2, (int)c.Type);
             sqlite3_bind_text16(stmt, 3, c.Description, -1, IntPtr.Zero);
             sqlite3_bind_text16(stmt, 4, c.Id, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -382,11 +436,26 @@ public class SqliteDatabase : IDisposable
     public bool DeleteCategory(string id, out string error)
     {
         Open();
-        var txs = GetTransactions().Where(t => t.CategoryId == id).ToList();
-        if (txs.Count > 0)
+        const string checkSql = "SELECT 1 FROM transactions WHERE category_id = ? LIMIT 1;";
+        int checkRc = sqlite3_prepare16_v2(_db, checkSql, -1, out var checkStmt, IntPtr.Zero);
+        if (checkRc != SQLITE_OK)
         {
-            error = "Không thể xóa danh mục đang có giao dịch liên kết.";
+            error = GetLastErrorMessage();
             return false;
+        }
+
+        try
+        {
+            sqlite3_bind_text16(checkStmt, 1, id, -1, IntPtr.Zero);
+            if (sqlite3_step(checkStmt) == SQLITE_ROW)
+            {
+                error = "Không thể xóa danh mục đang có giao dịch liên kết.";
+                return false;
+            }
+        }
+        finally
+        {
+            sqlite3_finalize(checkStmt);
         }
 
         string sql = "DELETE FROM categories WHERE id = ?;";
@@ -400,7 +469,7 @@ public class SqliteDatabase : IDisposable
         try
         {
             sqlite3_bind_text16(stmt, 1, id, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
             error = string.Empty;
             return true;
         }
@@ -448,7 +517,7 @@ public class SqliteDatabase : IDisposable
         return list;
     }
 
-    public void InsertTransaction(Transaction t)
+    public void InsertTransaction(Transaction t, bool recalculate = true)
     {
         Open();
         string sql = "INSERT INTO transactions (id, tx_date, amount, type, category_id, source_account_id, dest_account_id, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
@@ -473,14 +542,17 @@ public class SqliteDatabase : IDisposable
             sqlite3_bind_text16(stmt, 8, t.Note, -1, IntPtr.Zero);
             sqlite3_bind_text16(stmt, 9, t.CreatedAt.ToString("o"), -1, IntPtr.Zero);
 
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
             sqlite3_finalize(stmt);
         }
 
-        RecalculateBalances();
+        if (recalculate)
+        {
+            RecalculateBalances();
+        }
     }
 
     public void UpdateTransaction(Transaction t)
@@ -507,7 +579,7 @@ public class SqliteDatabase : IDisposable
             sqlite3_bind_text16(stmt, 7, t.Note, -1, IntPtr.Zero);
             sqlite3_bind_text16(stmt, 8, t.Id, -1, IntPtr.Zero);
 
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -527,7 +599,7 @@ public class SqliteDatabase : IDisposable
         try
         {
             sqlite3_bind_text16(stmt, 1, id, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {
@@ -579,10 +651,20 @@ public class SqliteDatabase : IDisposable
                 int rc = sqlite3_prepare16_v2(_db, sql, -1, out var stmt, IntPtr.Zero);
                 if (rc == SQLITE_OK)
                 {
-                    sqlite3_bind_double(stmt, 1, (double)Math.Round(a.CurrentBalance, 2, MidpointRounding.AwayFromZero));
-                    sqlite3_bind_text16(stmt, 2, a.Id, -1, IntPtr.Zero);
-                    sqlite3_step(stmt);
-                    sqlite3_finalize(stmt);
+                    try
+                    {
+                        sqlite3_bind_double(stmt, 1, (double)Math.Round(a.CurrentBalance, 2, MidpointRounding.AwayFromZero));
+                        sqlite3_bind_text16(stmt, 2, a.Id, -1, IntPtr.Zero);
+                        StepOrThrow(stmt);
+                    }
+                    finally
+                    {
+                        sqlite3_finalize(stmt);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException(GetLastErrorMessage());
                 }
             }
             ExecuteNonQuery("COMMIT;");
@@ -623,6 +705,8 @@ public class SqliteDatabase : IDisposable
             throw new FileNotFoundException("Tập tin sao lưu nguồn không tồn tại.");
         }
 
+        ValidateDatabaseFile(sourceBackupPath);
+
         Close();
         try
         {
@@ -632,6 +716,60 @@ public class SqliteDatabase : IDisposable
         {
             Open();
             RecalculateBalances();
+        }
+    }
+
+    private static void ValidateDatabaseFile(string filePath)
+    {
+        var fileInfo = new FileInfo(filePath);
+        if (fileInfo.Length < 100)
+        {
+            throw new InvalidOperationException("Tập tin sao lưu không phải là cơ sở dữ liệu Atom Finance hợp lệ.");
+        }
+
+        byte[] header = new byte[16];
+        using (var fs = File.OpenRead(filePath))
+        {
+            int read = fs.Read(header, 0, 16);
+            if (read < 16 || Encoding.ASCII.GetString(header) != "SQLite format 3\0")
+            {
+                throw new InvalidOperationException("Tập tin sao lưu không phải là cơ sở dữ liệu Atom Finance hợp lệ.");
+            }
+        }
+
+        IntPtr tempDb = IntPtr.Zero;
+        try
+        {
+            int rc = sqlite3_open16(filePath, out tempDb);
+            if (rc != SQLITE_OK || tempDb == IntPtr.Zero)
+            {
+                throw new InvalidOperationException("Tập tin sao lưu không phải là cơ sở dữ liệu Atom Finance hợp lệ.");
+            }
+
+            const string sql = "SELECT COUNT(name) FROM sqlite_master WHERE type='table' AND name IN ('accounts', 'categories', 'transactions', 'settings');";
+            if (sqlite3_prepare16_v2(tempDb, sql, -1, out var stmt, IntPtr.Zero) != SQLITE_OK)
+            {
+                throw new InvalidOperationException("Tập tin sao lưu không phải là cơ sở dữ liệu Atom Finance hợp lệ.");
+            }
+
+            try
+            {
+                if (sqlite3_step(stmt) != SQLITE_ROW || sqlite3_column_int(stmt, 0) != 4)
+                {
+                    throw new InvalidOperationException("Tập tin sao lưu không phải là cơ sở dữ liệu Atom Finance hợp lệ.");
+                }
+            }
+            finally
+            {
+                sqlite3_finalize(stmt);
+            }
+        }
+        finally
+        {
+            if (tempDb != IntPtr.Zero)
+            {
+                sqlite3_close(tempDb);
+            }
         }
     }
     #endregion
@@ -670,7 +808,7 @@ public class SqliteDatabase : IDisposable
         {
             sqlite3_bind_text16(stmt, 1, key, -1, IntPtr.Zero);
             sqlite3_bind_text16(stmt, 2, value, -1, IntPtr.Zero);
-            sqlite3_step(stmt);
+            StepOrThrow(stmt);
         }
         finally
         {

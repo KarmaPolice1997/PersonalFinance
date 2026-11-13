@@ -36,6 +36,15 @@ public partial class AccountsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public async Task EditAccountAsync(string id)
+    {
+        var item = Accounts.FirstOrDefault(a => a.Id == id);
+        if (item == null) return;
+
+        await _dialogService.ShowEditAccountDialogAsync(item.RawAccount);
+    }
+
+    [RelayCommand]
     public async Task DeleteAccountAsync(string id)
     {
         bool confirm = await _dialogService.ShowConfirmAsync("Xác nhận xóa", "Bạn có chắc chắn muốn xóa tài khoản này không?");

@@ -224,4 +224,9 @@ public class FinanceService : IFinanceService
     {
         _db.SetSetting(key, value);
     }
+
+    public void NotifyDataChanged()
+    {
+        DataChanged?.Invoke(this, EventArgs.Empty);
+    }
 }

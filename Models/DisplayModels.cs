@@ -1,5 +1,8 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Media;
 using PersonalFinance.Models;
+using Windows.UI.Text;
 
 namespace AtomFinance.WinUI.Models;
 
@@ -25,12 +28,42 @@ public record AccountItem(
     Account RawAccount
 );
 
-public record DailyActivityItem(
-    string DayName,
-    decimal Amount,
-    string AmountText,
-    double BarHeight
-);
+public partial class DailyActivityItem : ObservableObject
+{
+    public string DayName { get; }
+    public string FullDateLabel { get; }
+    public decimal Amount { get; }
+    public string AmountText { get; }
+    public double NormalizedValue { get; }
+    public bool IsToday { get; }
+    public FontWeight DayFontWeight => IsToday ? FontWeights.Bold : FontWeights.Normal;
+
+    [ObservableProperty]
+    public partial double BarHeight { get; set; }
+
+    [ObservableProperty]
+    public partial double BarOpacity { get; set; }
+
+    public DailyActivityItem(
+        string dayName,
+        string fullDateLabel,
+        decimal amount,
+        string amountText,
+        double normalizedValue,
+        double barHeight,
+        double barOpacity,
+        bool isToday)
+    {
+        DayName = dayName;
+        FullDateLabel = fullDateLabel;
+        Amount = amount;
+        AmountText = amountText;
+        NormalizedValue = normalizedValue;
+        BarHeight = barHeight;
+        BarOpacity = barOpacity;
+        IsToday = isToday;
+    }
+}
 
 public record NotificationItem(
     string Title,
